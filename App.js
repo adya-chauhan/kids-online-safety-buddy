@@ -1941,7 +1941,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 24,
-    marginBottom: 2,
+    marginBottom: 0,
   },
   searchInput: {
     height: 48,
@@ -1955,8 +1955,8 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     paddingHorizontal: 24,
-    height: 38,
-    marginBottom: 4,
+    height: 36,
+    marginBottom: 0,
   },
   filterContent: {
     flexDirection: 'row',
@@ -2271,7 +2271,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 2,
+    paddingVertical: 0,
     paddingHorizontal: 24,
     backgroundColor: 'transparent',
     borderBottomWidth: 0,
@@ -2613,7 +2613,7 @@ const styles = StyleSheet.create({
   headerVertical: {
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'android' ? 20 : 10,
-    paddingBottom: 15,
+    paddingBottom: 0,
   },
   headerTopRow: {
     flexDirection: 'row',
