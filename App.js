@@ -242,28 +242,46 @@ export default function App() {
     setSelectModeActive(false);
   };
 
-  // Bottom navigation tab bar component
+  // Bottom navigation tab bar component (5 tabs capsule)
   const renderTabBar = () => {
     if (activeChat) return null;
     
     return (
       <View style={styles.tabBar}>
         <TouchableOpacity 
+          style={[styles.tabItem, activeTab === 'updates' && styles.tabItemActive]}
+          onPress={() => setActiveTab('updates')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'updates' && styles.tabIconActive]}>📢</Text>
+          <Text style={[styles.tabLabel, activeTab === 'updates' && styles.tabLabelActive]} numberOfLines={1}>Updates</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.tabItem, activeTab === 'calls' && styles.tabItemActive]}
+          onPress={() => setActiveTab('calls')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'calls' && styles.tabIconActive]}>📞</Text>
+          <Text style={[styles.tabLabel, activeTab === 'calls' && styles.tabLabelActive]} numberOfLines={1}>Calls</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.tabItem, activeTab === 'communities' && styles.tabItemActive]}
+          onPress={() => setActiveTab('communities')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'communities' && styles.tabIconActive]}>👥</Text>
+          <Text style={[styles.tabLabel, activeTab === 'communities' && styles.tabLabelActive]} numberOfLines={1}>Groups</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
           style={[styles.tabItem, activeTab === 'chats' && styles.tabItemActive]}
           onPress={() => setActiveTab('chats')}
           activeOpacity={0.7}
         >
           <Text style={[styles.tabIcon, activeTab === 'chats' && styles.tabIconActive]}>💬</Text>
-          <Text style={[styles.tabLabel, activeTab === 'chats' && styles.tabLabelActive]}>Chats</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.tabItem, activeTab === 'safety' && styles.tabItemActive]}
-          onPress={() => setActiveTab('safety')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'safety' && styles.tabIconActive]}>🛡️</Text>
-          <Text style={[styles.tabLabel, activeTab === 'safety' && styles.tabLabelActive]}>Safety Tips</Text>
+          <Text style={[styles.tabLabel, activeTab === 'chats' && styles.tabLabelActive]} numberOfLines={1}>Chats</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -272,7 +290,7 @@ export default function App() {
           activeOpacity={0.7}
         >
           <Text style={[styles.tabIcon, activeTab === 'profile' && styles.tabIconActive]}>👤</Text>
-          <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]}>My Profile</Text>
+          <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]} numberOfLines={1}>You</Text>
         </TouchableOpacity>
       </View>
     );
@@ -285,9 +303,12 @@ export default function App() {
         {/* Safety Header */}
         <View style={styles.headerVertical}>
           <View style={styles.headerTopRow}>
-            <View style={styles.safetyHeaderBadge}>
-              <Text style={styles.safetyHeaderBadgeText}>🛡️ Safety Center</Text>
-            </View>
+            <TouchableOpacity 
+              style={styles.safetyHeaderBackBtn} 
+              onPress={() => setActiveTab('profile')}
+            >
+              <Text style={styles.safetyHeaderBackText}>← Back</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.headerBottomRow}>
             <Text style={styles.headerTitle}>Safety Guide</Text>
@@ -351,6 +372,192 @@ export default function App() {
     );
   };
 
+  // Mock Updates Feed Screen
+  const renderUpdatesScreen = () => {
+    return (
+      <View style={styles.tabContentContainer}>
+        {/* Updates Header */}
+        <View style={styles.headerVertical}>
+          <View style={styles.headerBottomRow}>
+            <Text style={styles.headerTitle}>Updates</Text>
+          </View>
+        </View>
+
+        <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
+          {/* Status Row */}
+          <Text style={styles.updatesSectionLabel}>Status</Text>
+          <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} style={styles.statusScrollRow}>
+            <View style={styles.myStatusCard}>
+              <View style={styles.myStatusAvatar}>
+                <Text style={styles.statusAvatarText}>👑</Text>
+                <View style={styles.statusAddBadge}><Text style={styles.statusAddText}>+</Text></View>
+              </View>
+              <Text style={styles.statusLabelText}>My Status</Text>
+            </View>
+            
+            <View style={styles.statusCard}>
+              <View style={[styles.statusAvatar, { borderColor: '#10B981' }]}>
+                <Image source={require('./assets/avatar_anvi_girl.jpg')} style={styles.statusAvatarImg} />
+              </View>
+              <Text style={styles.statusLabelText}>Anvi</Text>
+            </View>
+
+            <View style={styles.statusCard}>
+              <View style={[styles.statusAvatar, { borderColor: '#10B981' }]}>
+                <Image source={require('./assets/avatar_sara_kid.jpg')} style={styles.statusAvatarImg} />
+              </View>
+              <Text style={styles.statusLabelText}>Sara</Text>
+            </View>
+
+            <View style={styles.statusCard}>
+              <View style={[styles.statusAvatar, { borderColor: '#94A3B8' }]}>
+                <Image source={require('./assets/avatar_tanvi_indian.jpg')} style={styles.statusAvatarImg} />
+              </View>
+              <Text style={styles.statusLabelText}>Tanvi</Text>
+            </View>
+          </ScrollView>
+
+          {/* Channels Section */}
+          <Text style={styles.updatesSectionLabel}>Popular Channels</Text>
+          <View style={styles.channelCard}>
+            <View style={styles.channelBadgeBg}><Text style={styles.channelBadgeText}>🛡️</Text></View>
+            <View style={styles.channelInfo}>
+              <Text style={styles.channelName}>Navi Safety Feed</Text>
+              <Text style={styles.channelUpdateText}>"Always check with parents before playing new online games!"</Text>
+            </View>
+            <TouchableOpacity style={styles.channelFollowBtn}>
+              <Text style={styles.channelFollowBtnText}>Follow</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.channelCard}>
+            <View style={[styles.channelBadgeBg, { backgroundColor: '#FEF3C7' }]}><Text style={styles.channelBadgeText}>🎨</Text></View>
+            <View style={styles.channelInfo}>
+              <Text style={styles.channelName}>Creative Kids Art</Text>
+              <Text style={styles.channelUpdateText}>"Drawing competition starts this Saturday! Bring your markers!"</Text>
+            </View>
+            <TouchableOpacity style={styles.channelFollowBtn}>
+              <Text style={styles.channelFollowBtnText}>Follow</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Mock Calls Log Screen
+  const renderCallsScreen = () => {
+    return (
+      <View style={styles.tabContentContainer}>
+        {/* Calls Header */}
+        <View style={styles.headerVertical}>
+          <View style={styles.headerBottomRow}>
+            <Text style={styles.headerTitle}>Calls</Text>
+          </View>
+        </View>
+
+        <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
+          <Text style={styles.updatesSectionLabel}>Recent Calls</Text>
+          
+          <View style={styles.callRow}>
+            <Image source={require('./assets/avatar_anvi_girl.jpg')} style={styles.callAvatar} />
+            <View style={styles.callInfo}>
+              <Text style={styles.callName}>Anvi</Text>
+              <Text style={styles.callStatusText}>↗️ Outgoing, Yesterday (10 min)</Text>
+            </View>
+            <TouchableOpacity style={styles.callActionBtn}>
+              <Text style={styles.callActionBtnIcon}>📞</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.callRow}>
+            <Image source={require('./assets/avatar_sara_kid.jpg')} style={styles.callAvatar} />
+            <View style={styles.callInfo}>
+              <Text style={styles.callName}>Sara</Text>
+              <Text style={styles.callStatusText}>↙️ Incoming, 2 days ago (5 min)</Text>
+            </View>
+            <TouchableOpacity style={styles.callActionBtn}>
+              <Text style={styles.callActionBtnIcon}>📞</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.callRow}>
+            <Image source={require('./assets/avatar_mommy_indian.jpg')} style={styles.callAvatar} />
+            <View style={styles.callInfo}>
+              <Text style={styles.callName}>Mommy</Text>
+              <Text style={styles.callStatusText}>↙️ Missed Call, 3 days ago</Text>
+            </View>
+            <TouchableOpacity style={[styles.callActionBtn, { backgroundColor: '#FEE2E2' }]}>
+              <Text style={[styles.callActionBtnIcon, { color: '#EF4444' }]}>📞</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Mock Communities Groups Screen
+  const renderCommunitiesScreen = () => {
+    return (
+      <View style={styles.tabContentContainer}>
+        {/* Communities Header */}
+        <View style={styles.headerVertical}>
+          <View style={styles.headerBottomRow}>
+            <Text style={styles.headerTitle}>Communities</Text>
+          </View>
+        </View>
+
+        <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
+          {/* Main Info Card */}
+          <View style={styles.communityIntroCard}>
+            <Text style={styles.communityIntroEmoji}>👥</Text>
+            <View style={styles.communityIntroText}>
+              <Text style={styles.communityIntroTitle}>School & Hobby Groups</Text>
+              <Text style={styles.communityIntroDesc}>
+                Connect with verified classmates and kids who share your hobbies in safe, moderated chats.
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.updatesSectionLabel}>My Communities</Text>
+          
+          <View style={styles.communityCard}>
+            <View style={styles.communityBadge}><Text style={styles.communityBadgeEmoji}>🎒</Text></View>
+            <View style={styles.communityInfo}>
+              <Text style={styles.communityName}>5th Grade Class Board</Text>
+              <Text style={styles.communitySubText}>24 Members • Moderated</Text>
+            </View>
+            <TouchableOpacity style={styles.communityJoinBtn}>
+              <Text style={styles.communityJoinBtnText}>Open</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.communityCard}>
+            <View style={[styles.communityBadge, { backgroundColor: '#EFF6FF' }]}><Text style={styles.communityBadgeEmoji}>⚽</Text></View>
+            <View style={styles.communityInfo}>
+              <Text style={styles.communityName}>Soccer Practice Kids</Text>
+              <Text style={styles.communitySubText}>18 Members • Moderated</Text>
+            </View>
+            <TouchableOpacity style={styles.communityJoinBtn}>
+              <Text style={styles.communityJoinBtnText}>Open</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.communityCard}>
+            <View style={[styles.communityBadge, { backgroundColor: '#FDF2F8' }]}><Text style={styles.communityBadgeEmoji}>🎨</Text></View>
+            <View style={styles.communityInfo}>
+              <Text style={styles.communityName}>Art Fort Builders</Text>
+              <Text style={styles.communitySubText}>12 Members • Moderated</Text>
+            </View>
+            <TouchableOpacity style={styles.communityJoinBtn}>
+              <Text style={styles.communityJoinBtnText}>Open</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
   // Gamified Profile screen for child
   const renderProfileScreen = () => {
     return (
@@ -358,7 +565,7 @@ export default function App() {
         {/* Profile Header */}
         <View style={styles.headerVertical}>
           <View style={styles.headerBottomRow}>
-            <Text style={styles.headerTitle}>My Profile</Text>
+            <Text style={styles.headerTitle}>You</Text>
           </View>
         </View>
 
@@ -377,6 +584,20 @@ export default function App() {
             </View>
             <Text style={styles.progressLabel}>75% towards Safety Master status</Text>
           </View>
+
+          {/* Safety Guide quick access */}
+          <TouchableOpacity 
+            style={styles.profileSafetyLinkCard}
+            onPress={() => setActiveTab('safety')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.profileSafetyLinkIcon}>🛡️</Text>
+            <View style={styles.profileSafetyLinkText}>
+              <Text style={styles.profileSafetyLinkTitle}>Open Online Safety Guide</Text>
+              <Text style={styles.profileSafetyLinkDesc}>Review Navi's safety tips and guidelines.</Text>
+            </View>
+            <Text style={styles.profileSafetyLinkArrow}>→</Text>
+          </TouchableOpacity>
 
           {/* Grid of badges */}
           <Text style={styles.profileSectionLabel}>My Badges</Text>
@@ -879,6 +1100,12 @@ export default function App() {
                 </ScrollView>
               </>
             )}
+
+            {activeTab === 'updates' && renderUpdatesScreen()}
+
+            {activeTab === 'calls' && renderCallsScreen()}
+
+            {activeTab === 'communities' && renderCommunitiesScreen()}
 
             {activeTab === 'safety' && renderSafetyScreen()}
 
@@ -2178,5 +2405,297 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textAlign: 'center',
     fontWeight: '500',
+  },
+  // Updates Screen styles
+  updatesSectionLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 18,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  statusScrollRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    paddingVertical: 4,
+  },
+  myStatusCard: {
+    alignItems: 'center',
+    marginRight: 16,
+    width: 72,
+  },
+  myStatusAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginBottom: 6,
+  },
+  statusAvatarText: {
+    fontSize: 24,
+  },
+  statusAddBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#3B82F6',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  statusAddText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+    marginTop: -1,
+  },
+  statusLabelText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    textAlign: 'center',
+  },
+  statusCard: {
+    alignItems: 'center',
+    marginRight: 16,
+    width: 72,
+  },
+  statusAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2.5,
+    padding: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  statusAvatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
+  },
+  channelCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 10,
+  },
+  channelBadgeBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  channelBadgeText: {
+    fontSize: 20,
+  },
+  channelInfo: {
+    flex: 1,
+  },
+  channelName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  channelUpdateText: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  channelFollowBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  channelFollowBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+  },
+
+  // Calls Screen styles
+  callRow: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 10,
+  },
+  callAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  callInfo: {
+    flex: 1,
+  },
+  callName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  callStatusText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  callActionBtn: {
+    backgroundColor: '#ECFDF5',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  callActionBtnIcon: {
+    fontSize: 16,
+    color: '#10B981',
+  },
+
+  // Communities Screen styles
+  communityIntroCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  communityIntroEmoji: {
+    fontSize: 32,
+  },
+  communityIntroText: {
+    flex: 1,
+  },
+  communityIntroTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  communityIntroDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  communityCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 10,
+  },
+  communityBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  communityBadgeEmoji: {
+    fontSize: 20,
+  },
+  communityName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  communitySubText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  communityJoinBtn: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  communityJoinBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#3B82F6',
+  },
+
+  // Profile Safety Link styles
+  profileSafetyLinkCard: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  profileSafetyLinkIcon: {
+    fontSize: 28,
+  },
+  profileSafetyLinkText: {
+    flex: 1,
+  },
+  profileSafetyLinkTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E3A8A',
+    marginBottom: 2,
+  },
+  profileSafetyLinkDesc: {
+    fontSize: 11,
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  profileSafetyLinkArrow: {
+    fontSize: 18,
+    fontWeight: '950',
+    color: '#3B82F6',
+  },
+  safetyHeaderBackBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  safetyHeaderBackText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
   },
 });
