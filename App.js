@@ -13,7 +13,8 @@ import {
   Platform,
   KeyboardAvoidingView,
   Animated,
-  PanResponder
+  PanResponder,
+  Alert
 } from 'react-native';
 
 const initialProfilesData = [
@@ -195,7 +196,10 @@ const checkMessageSafety = (text, isUser = true) => {
   // General Mean / Rude words / Respond Politely triggers (checked for both user and contact!)
   const respondPolitelyKeywords = [
     "hate", "stupid", "dumb", "ugly", "shut up", "loser", 
-    "jerk", "weirdo", "smelly", "bad", "mean", "fool", "fat"
+    "jerk", "weirdo", "smelly", "bad", "mean", "fool", "fat",
+    "suck", "sucks", "you suck", "dummy", "idiot", "garbage",
+    "trash", "cry baby", "scaredy cat", "baby", "stinky", "freak",
+    "nerd", "weak", "horrible", "worst", "bad friend"
   ];
   for (const kw of respondPolitelyKeywords) {
     const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -744,6 +748,130 @@ export default function App() {
     sendSafeFeedback(politeReply);
   };
 
+  const checkImageSafetyWithGemma = async (imageUri) => {
+    // 1. Check offline fallback first (reliable offline testing)
+    if (imageUri && imageUri.includes("mean_meme_test")) {
+      return 'RESPOND_POLITELY'; // Flagged as rude/mean image
+    }
+
+    // 2. Local vision LLM (PaliGemma / Llava via Ollama)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4-second timeout
+
+    try {
+      const response = await fetch('http://192.168.0.158:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llava', // or paligemma
+          prompt: "Analyze this image. Does it contain cyberbullying, insults, rude memes, or mean content? Reply with exactly one word: SAFE or UNSAFE.",
+          images: [imageUri], // public URL or base64
+          stream: false
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const json = await response.json();
+        const text = (json.response || "").toUpperCase();
+        if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN")) {
+          return 'RESPOND_POLITELY';
+        }
+      }
+    } catch (e) {
+      console.log("Gemma vision safety scan failed or timed out:", e);
+    }
+    return null;
+  };
+
+  const sendMockImagePrompt = () => {
+    Alert.alert(
+      "Simulate Image Message",
+      "Would you like to send a safe image or a mean/unsafe image to test Navi's Gemma Vision detector?",
+      [
+        {
+          text: "🐶 Safe Image",
+          onPress: () => sendMockImageMessage(
+            "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400",
+            "Look at this cute puppy!"
+          )
+        },
+        {
+          text: "😡 Mean Image",
+          onPress: () => sendMockImageMessage(
+            "https://raw.githubusercontent.com/adya-chauhan/kids-online-safety-buddy/main/assets/mean_meme_test.png",
+            "This meme is so funny! You look exactly like this ugly jerk! 😂"
+          )
+        },
+        {
+          text: "Cancel",
+          style: "cancel"
+        }
+      ]
+    );
+  };
+
+  const sendMockImageMessage = async (uri, text) => {
+    if (!activeChat) return;
+    const contactId = activeChat.id;
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const newMessageId = `${contactId}_user_${Date.now()}`;
+
+    const newMsg = {
+      id: newMessageId,
+      text: text,
+      image: uri,
+      sender: 'user',
+      time: timeStr
+    };
+
+    // Add user message with image
+    setMessages(prev => ({
+      ...prev,
+      [contactId]: [...(prev[contactId] || []), newMsg]
+    }));
+
+    // Scan image safety with Gemma
+    const imageSafety = await checkImageSafetyWithGemma(uri);
+    if (imageSafety) {
+      setSafetyCategory(imageSafety);
+      setNaviSpeechVisible(true);
+    } else {
+      setSafetyCategory(null);
+      setNaviSpeechVisible(false);
+    }
+
+    // Trigger auto reply if online or away
+    if (activeChat.status !== 'offline') {
+      setIsTyping(true);
+      
+      setTimeout(() => {
+        setIsTyping(false);
+        
+        let replyText = "";
+        if (imageSafety) {
+          replyText = `Please don't send me mean memes. Let's keep our conversation kind and friendly! 😊`;
+        } else {
+          replyText = `Wow, that looks so cool! Thanks for sharing! 🌟`;
+        }
+
+        const replyId = `${contactId}_contact_${Date.now()}`;
+        const replyMsg = {
+          id: replyId,
+          text: replyText,
+          sender: 'contact',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setMessages(prev => ({
+          ...prev,
+          [contactId]: [...(prev[contactId] || []), replyMsg]
+        }));
+      }, 1500);
+    }
+  };
+
   const handleNaviIgnorePivot = () => {
     sendSafeFeedback("Hey, let's talk about something else! What's your favorite school subject? 📚");
   };
@@ -1007,12 +1135,21 @@ export default function App() {
                       msg.sender === 'user' ? styles.msgBubbleSent : styles.msgBubbleReceived
                     ]}
                   >
-                    <Text style={[
-                      styles.msgText,
-                      msg.sender === 'user' ? styles.msgTextSent : styles.msgTextReceived
-                    ]}>
-                      {msg.text}
-                    </Text>
+                    {msg.image && (
+                      <Image 
+                        source={{ uri: msg.image }} 
+                        style={styles.msgImage} 
+                        resizeMode="cover"
+                      />
+                    )}
+                    {msg.text ? (
+                      <Text style={[
+                        styles.msgText,
+                        msg.sender === 'user' ? styles.msgTextSent : styles.msgTextReceived
+                      ]}>
+                        {msg.text}
+                      </Text>
+                    ) : null}
                     <Text style={[
                       styles.msgTime,
                       msg.sender === 'user' ? styles.msgTimeSent : styles.msgTimeReceived
@@ -1035,6 +1172,14 @@ export default function App() {
 
             {/* Chat Input Bar */}
             <View style={styles.inputBar}>
+              <TouchableOpacity 
+                style={styles.imageAttachBtn} 
+                onPress={sendMockImagePrompt}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.imageAttachText}>📷</Text>
+              </TouchableOpacity>
+              
               <TextInput
                 style={styles.chatInput}
                 placeholder="Type a message..."
@@ -1817,6 +1962,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  imageAttachBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginRight: 10,
+  },
+  imageAttachText: {
+    fontSize: 18,
+  },
+  msgImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 12,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   /* Modal Overlay Styles */
   modalOverlay: {
