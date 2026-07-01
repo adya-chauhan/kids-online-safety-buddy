@@ -1951,6 +1951,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingHorizontal: 18,
+    paddingVertical: 0,
+    marginVertical: 0,
     color: '#0F172A',
     fontSize: 15,
     borderWidth: 1,
@@ -1958,9 +1960,10 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     paddingHorizontal: 24,
-    height: 32,
+    height: 30,
     marginTop: 0,
     marginBottom: 0,
+    overflow: 'hidden',
   },
   filterContent: {
     flexDirection: 'row',
@@ -1969,7 +1972,7 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 2,
     borderRadius: 20,
     backgroundColor: '#EFF6FF',
     marginRight: 6,
@@ -2275,6 +2278,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    height: 28,
     paddingVertical: 0,
     paddingHorizontal: 24,
     backgroundColor: 'transparent',
@@ -2625,7 +2629,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   headerBottomRow: {
     flexDirection: 'row',
