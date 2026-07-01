@@ -653,12 +653,15 @@ export default function App() {
     setNaviSpeechVisible(false);
   };
 
-  const handleNaviRespondPolitely = () => {
-    sendSafeFeedback("Thank you, but let's keep our conversation friendly and kind! 😊");
+  const handleNaviIgnore = () => {
+    // Simply clear Navi and dismiss the alert (doing nothing/ignoring)
+    setSafetyCategory(null);
+    setNaviSpeechVisible(false);
   };
 
-  const handleNaviIgnorePivot = () => {
-    sendSafeFeedback("Hey, let's talk about something else! What's your favorite school subject? 📚");
+  const handleNaviPivotRespond = () => {
+    // Send a polite response that pivots the topic
+    sendSafeFeedback("Thank you, but let's keep our conversation friendly and kind! What's your favorite school subject? 📚");
   };
 
   const handleNaviTellAdult = () => {
@@ -952,23 +955,23 @@ export default function App() {
                     {/* Safety Options */}
                     <TouchableOpacity 
                       style={styles.naviOptionBtn}
-                      onPress={handleNaviRespondPolitely}
+                      onPress={handleNaviIgnore}
                     >
-                      <Text style={styles.naviOptionText}>💬 Respond politely</Text>
+                      <Text style={styles.naviOptionText}>🔕 Ignore</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity 
                       style={styles.naviOptionBtn}
-                      onPress={handleNaviIgnorePivot}
+                      onPress={handleNaviPivotRespond}
                     >
-                      <Text style={styles.naviOptionText}>🔀 Ignore & Pivot</Text>
+                      <Text style={styles.naviOptionText}>💬 Pivot and respond politely</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity 
                       style={[styles.naviOptionBtn, styles.naviOptionBtnAlert]}
                       onPress={handleNaviTellAdult}
                     >
-                      <Text style={[styles.naviOptionText, styles.naviOptionTextAlert]}>❤️ Tell a trusted adult</Text>
+                      <Text style={[styles.naviOptionText, styles.naviOptionTextAlert]}>❤️ Alert a trusted adult</Text>
                     </TouchableOpacity>
                   </View>
                 )}
