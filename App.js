@@ -1424,6 +1424,19 @@ export default function App() {
                   />
                 </View>
 
+                {/* Archived Row */}
+                <TouchableOpacity 
+                  style={styles.archivedRow} 
+                  onPress={() => alert("Open archived chats... 📁")}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.archivedLeft}>
+                    <Text style={styles.archivedIcon}>📥</Text>
+                    <Text style={styles.archivedText}>Archived</Text>
+                  </View>
+                  <Text style={styles.archivedCount}>0</Text>
+                </TouchableOpacity>
+
                 {/* Profiles List */}
                 <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
                   {filteredProfiles.length > 0 ? (
@@ -2107,6 +2120,40 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  archivedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  archivedLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  archivedIcon: {
+    fontSize: 18,
+    marginRight: 12,
+    color: '#64748B',
+  },
+  archivedText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  archivedCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563EB',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   /* Modal Overlay Styles */
   modalOverlay: {
