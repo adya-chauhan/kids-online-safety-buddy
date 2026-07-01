@@ -1941,7 +1941,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 24,
-    marginBottom: 8,
+    marginBottom: 2,
   },
   searchInput: {
     height: 48,
@@ -1955,7 +1955,8 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     paddingHorizontal: 24,
-    marginBottom: 8,
+    height: 38,
+    marginBottom: 4,
   },
   filterContent: {
     flexDirection: 'row',
@@ -2270,11 +2271,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
     paddingHorizontal: 24,
     backgroundColor: 'transparent',
     borderBottomWidth: 0,
-    marginBottom: 2,
+    marginBottom: 0,
   },
   archivedLeft: {
     flexDirection: 'row',
