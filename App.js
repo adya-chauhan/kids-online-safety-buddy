@@ -1943,12 +1943,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   topControlsBlock: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6F0FA',
     paddingVertical: 10,
     marginTop: 0,
     marginBottom: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
   searchContainer: {
     paddingHorizontal: 24,
