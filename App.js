@@ -1431,7 +1431,6 @@ export default function App() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.archivedLeft}>
-                    <Text style={styles.archivedIcon}>📥</Text>
                     <Text style={styles.archivedText}>Archived</Text>
                   </View>
                   <Text style={styles.archivedCount}>0</Text>
