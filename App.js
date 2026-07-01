@@ -73,6 +73,34 @@ const initialProfilesData = [
     phone: '+1 (555) 000-1111',
     bio: "Always looking out for you. Loves gardening, cooking delicious meals, and checking in on how you're doing.",
     lastUpdated: Date.now() - 24 * 60 * 60 * 1000
+  },
+  {
+    id: '5',
+    name: 'Daddy',
+    role: 'Parent 👨‍👦',
+    avatar: require('./assets/avatar_daddy_indian.jpg'),
+    status: 'online',
+    statusText: 'At work, talk to you soon! 💼',
+    time: '2h ago',
+    unread: 0,
+    email: 'daddy@family.org',
+    phone: '+1 (555) 111-2222',
+    bio: "Always here to support you. Loves fixing things, science projects, and outdoor games! 👨‍👦🏏",
+    lastUpdated: Date.now() - 120 * 60 * 1000
+  },
+  {
+    id: '6',
+    name: 'Kishu',
+    role: 'Brother (17yo) 👦',
+    avatar: require('./assets/avatar_kishu.jpg'),
+    status: 'online',
+    statusText: '🏀 Basketball in the driveway',
+    time: '3h ago',
+    unread: 0,
+    email: 'kishu@family.org',
+    phone: 'Shared Family Phone',
+    bio: 'Loves playing basketball, console gaming, and helping with computer coding stuff! 🏀🎮💻',
+    lastUpdated: Date.now() - 180 * 60 * 1000
   }
 ];
 
@@ -90,6 +118,12 @@ const initialMessagesData = {
   ],
   '4': [
     { id: '4_1', text: 'Did you eat lunch? Make sure to drink water and take breaks! 🍲', sender: 'contact', time: 'Yesterday' }
+  ],
+  '5': [
+    { id: '5_1', text: 'Hey buddy, did you finish your homework? I can help you with math tonight! 📐', sender: 'contact', time: 'Yesterday' }
+  ],
+  '6': [
+    { id: '6_1', text: 'Hey, did you finish your homework? Make sure Daddy doesn\'t catch you slacking! 📐', sender: 'contact', time: 'Yesterday' }
   ]
 };
 
@@ -156,6 +190,23 @@ const autoReplies = {
     "Did you wear a jacket? It's getting a bit chilly outside. 🧥",
     "I hope you are having a wonderful day. Remember that I love you very much!",
     "Don't stress too much about work. Everything will turn out just fine."
+  ],
+  '5': [
+    "Great job, buddy! Keep up the good work! 👍",
+    "Let's play cricket or go for a bike ride when I get home! 🏏🚲",
+    "Did you drink enough water today? Stay hydrated!",
+    "I can help you build your science volcano or lego set tonight! 🌋",
+    "Super proud of you! Love you, buddy! ❤️",
+    "Let me know if you need anything from the store. 🛒",
+    "Remember to always be safe, kind, and friendly online! 🛡️"
+  ],
+  '6': [
+    "Hey, what's up? Want to play some basketball in the driveway later? 🏀",
+    "Are you playing video games again? You are such a trash player! Get good! 😜",
+    "I'm working on my high school science project. Pretty cool coding stuff! 💻",
+    "Don't tell Mommy, but I hid the last box of cookies in my closet! 🤫🍪",
+    "Nice! Let's watch the movie together tonight. 🎬",
+    "You are the best brother/sister! Let me know if you need help with your computer. 🖥️"
   ]
 };
 
@@ -1030,6 +1081,14 @@ export default function App() {
     }
   };
 
+  const messageDaddyAction = () => {
+    setAdultAlertVisible(false);
+    const daddyProfile = profiles.find(p => p.id === '5');
+    if (daddyProfile) {
+      openChat(daddyProfile);
+    }
+  };
+
   // Swipe to dismiss bottom sheet logic
   const translateY = useRef(new Animated.Value(0)).current;
 
@@ -1197,8 +1256,8 @@ export default function App() {
             : p
         ));
 
-        // Scan contact's received message for safety if it's NOT Mommy (trusted parent)
-        if (contactId !== '4') {
+        // Scan contact's received message for safety if it's NOT Mommy or Daddy (trusted parents)
+        if (contactId !== '4' && contactId !== '5') {
           const replySafety = checkMessageSafety(replyText, false);
           if (replySafety) {
             setSafetyCategory(replySafety);
@@ -1707,7 +1766,7 @@ export default function App() {
                 If someone says something online that makes you feel uncomfortable, worried, or sad, you should always tell an adult you trust (like Mom, Dad, a grandparent, or a teacher).
               </Text>
               <Text style={styles.adultAlertSub}>
-                Would you like to send a quick message to Mommy right now to check in?
+                Would you like to send a quick message to Mommy or Daddy right now to check in?
               </Text>
               
               <View style={styles.adultAlertActions}>
@@ -1716,6 +1775,13 @@ export default function App() {
                   onPress={messageMommyAction}
                 >
                   <Text style={styles.adultAlertBtnPrimaryText}>Message Mommy 👩</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.adultAlertBtnPrimary, { backgroundColor: '#059669', marginVertical: 8 }]} 
+                  onPress={messageDaddyAction}
+                >
+                  <Text style={styles.adultAlertBtnPrimaryText}>Message Daddy 👨</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
