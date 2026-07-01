@@ -155,6 +155,122 @@ const autoReplies = {
   ]
 };
 
+// Naive Bayes Sentiment Classifier for Kids Safety Buddy
+class NaiveBayesClassifier {
+  constructor() {
+    this.words = new Set();
+    this.wordCounts = { mean: {}, safe: {} };
+    this.totalWordCounts = { mean: 0, safe: 0 };
+    this.docCounts = { mean: 0, safe: 0 };
+  }
+
+  tokenize(text) {
+    if (!text) return [];
+    return text.toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 0);
+  }
+
+  train(dataset) {
+    for (const item of dataset) {
+      const tokens = this.tokenize(item.text);
+      const label = item.label;
+      
+      this.docCounts[label]++;
+      
+      for (const token of tokens) {
+        this.words.add(token);
+        this.wordCounts[label][token] = (this.wordCounts[label][token] || 0) + 1;
+        this.totalWordCounts[label]++;
+      }
+    }
+  }
+
+  classify(text) {
+    const tokens = this.tokenize(text);
+    if (tokens.length === 0) return 'safe';
+
+    const totalDocs = this.docCounts.mean + this.docCounts.safe;
+    const logPriors = {
+      mean: Math.log(this.docCounts.mean / totalDocs),
+      safe: Math.log(this.docCounts.safe / totalDocs)
+    };
+
+    const logProbabilities = {
+      mean: logPriors.mean,
+      safe: logPriors.safe
+    };
+
+    const vocabularySize = this.words.size;
+
+    for (const label of ['mean', 'safe']) {
+      for (const token of tokens) {
+        const count = this.wordCounts[label][token] || 0;
+        const wordProb = (count + 1) / (this.totalWordCounts[label] + vocabularySize);
+        logProbabilities[label] += Math.log(wordProb);
+      }
+    }
+
+    return logProbabilities.mean > logProbabilities.safe ? 'mean' : 'safe';
+  }
+}
+
+const trainingDataset = [
+  // Mean messages (cyberbullying, insults, rude)
+  { text: "you suck at this game", label: "mean" },
+  { text: "you are so stupid and ugly", label: "mean" },
+  { text: "loser go away", label: "mean" },
+  { text: "nobody likes you", label: "mean" },
+  { text: "shut up you are annoying", label: "mean" },
+  { text: "you are dumb and lazy", label: "mean" },
+  { text: "what a complete fool", label: "mean" },
+  { text: "you look so weird and smelly", label: "mean" },
+  { text: "I hate you so much", label: "mean" },
+  { text: "you are the worst friend", label: "mean" },
+  { text: "go cry baby", label: "mean" },
+  { text: "you are so weak and useless", label: "mean" },
+  { text: "this drawing is garbage and trash", label: "mean" },
+  { text: "you are an idiot", label: "mean" },
+  { text: "stop talking you freak", label: "mean" },
+  { text: "you are a horrible person", label: "mean" },
+  { text: "nobody wants to play with a loser like you", label: "mean" },
+  { text: "you are so bad at drawing", label: "mean" },
+  { text: "you are a smelly jerk", label: "mean" },
+  { text: "get lost you dumb nerd", label: "mean" },
+  { text: "you are so fat and slow", label: "mean" },
+  { text: "you suck", label: "mean" },
+  { text: "you are horrible", label: "mean" },
+  { text: "shut up", label: "mean" },
+
+  // Safe / Kind / Friendly messages
+  { text: "hello how are you today", label: "safe" },
+  { text: "look at my cool unicorn drawing", label: "safe" },
+  { text: "can we play minecraft together later", label: "safe" },
+  { text: "have you eaten yet I can make food", label: "safe" },
+  { text: "your lego spaceship looks amazing", label: "safe" },
+  { text: "I love playing soccer with you", label: "safe" },
+  { text: "do you want to play badminton after school", label: "safe" },
+  { text: "you are the best friend ever", label: "safe" },
+  { text: "I got new light up sneakers today", label: "safe" },
+  { text: "let's build a pillow fort in the living room", label: "safe" },
+  { text: "my favorite ice cream flavor is strawberry", label: "safe" },
+  { text: "let's watch cartoons together", label: "safe" },
+  { text: "I drew a picture of you and me holding hands", label: "safe" },
+  { text: "good job on your school project", label: "safe" },
+  { text: "I am proud of you sweetheart", label: "safe" },
+  { text: "don't forget to take a walk and get air", label: "safe" },
+  { text: "I sent you some fresh mangoes enjoy", label: "safe" },
+  { text: "are you drinking enough water today", label: "safe" },
+  { text: "wear a jacket it is cold outside", label: "safe" },
+  { text: "what is your favorite school subject", label: "safe" },
+  { text: "let's bake chocolate chip cookies", label: "safe" },
+  { text: "can I borrow your gaming controller", label: "safe" }
+];
+
+const globalClassifier = new NaiveBayesClassifier();
+globalClassifier.train(trainingDataset);
+
 // Client-side Offline Safety Scanner for kids safety buddy Navi
 const checkMessageSafety = (text, isUser = true) => {
   if (!text) return null;
@@ -164,13 +280,12 @@ const checkMessageSafety = (text, isUser = true) => {
   const tellAdultKeywords = [
     "meet up", "come over", "alone", "don't tell", "secret place", 
     "meet me", "where are you", "what is your address", "hurt", 
-    "kill", "die", "stupid loser", "ugly jerk", "hate you"
+    "kill", "die"
   ];
   // If not user (i.e. contact), we only check for direct cyberbullying triggers, not friendly meetups/secrets
-  const tellAdultFiltered = isUser ? tellAdultKeywords : ["stupid loser", "ugly jerk", "hate you", "hurt", "kill", "die"];
+  const tellAdultFiltered = isUser ? tellAdultKeywords : ["hurt", "kill", "die"];
 
   for (const kw of tellAdultFiltered) {
-    // Escape special regex characters and build word-boundary matcher
     const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     const regex = new RegExp(`\\b${escaped}\\b`, 'i');
     if (regex.test(lower)) {
@@ -193,20 +308,10 @@ const checkMessageSafety = (text, isUser = true) => {
     }
   }
 
-  // General Mean / Rude words / Respond Politely triggers (checked for both user and contact!)
-  const respondPolitelyKeywords = [
-    "hate", "stupid", "dumb", "ugly", "shut up", "loser", 
-    "jerk", "weirdo", "smelly", "bad", "mean", "fool", "fat",
-    "suck", "sucks", "you suck", "dummy", "idiot", "garbage",
-    "trash", "cry baby", "scaredy cat", "baby", "stinky", "freak",
-    "nerd", "weak", "horrible", "worst", "bad friend"
-  ];
-  for (const kw of respondPolitelyKeywords) {
-    const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-    if (regex.test(lower)) {
-      return 'RESPOND_POLITELY';
-    }
+  // Use the trained Sentiment Classifier to detect mean comments
+  const sentiment = globalClassifier.classify(text);
+  if (sentiment === 'mean') {
+    return 'RESPOND_POLITELY';
   }
 
   return null; // Message is safe!
