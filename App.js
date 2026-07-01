@@ -1074,11 +1074,6 @@ export default function App() {
                   
                   <View style={styles.headerBottomRow}>
                     <Text style={styles.headerTitle}>Chats</Text>
-                    <View style={styles.unreadTotalBadge}>
-                      <Text style={styles.unreadTotalText}>
-                        {profiles.reduce((acc, curr) => acc + curr.unread, 0)} New
-                      </Text>
-                    </View>
                   </View>
                 </View>
 
