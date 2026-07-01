@@ -91,7 +91,7 @@ const initialProfilesData = [
   {
     id: '6',
     name: 'Kishu',
-    role: 'Brother (17yo) 👦',
+    role: 'Brother 👦',
     avatar: require('./assets/avatar_kishu.jpg'),
     status: 'online',
     statusText: '🏀 Basketball in the driveway',
