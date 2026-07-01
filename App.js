@@ -1941,7 +1941,10 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 24,
+    marginTop: 0,
     marginBottom: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   searchInput: {
     height: 48,
@@ -1955,7 +1958,8 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     paddingHorizontal: 24,
-    height: 36,
+    height: 32,
+    marginTop: 0,
     marginBottom: 0,
   },
   filterContent: {
@@ -1964,11 +1968,11 @@ const styles = StyleSheet.create({
     paddingRight: 10,
   },
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderRadius: 20,
     backgroundColor: '#EFF6FF',
-    marginRight: 8,
+    marginRight: 6,
     borderWidth: 1,
     borderColor: '#DBEAFE',
   },
@@ -2275,6 +2279,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     backgroundColor: 'transparent',
     borderBottomWidth: 0,
+    marginTop: 0,
     marginBottom: 0,
   },
   archivedLeft: {
@@ -2614,6 +2619,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'android' ? 20 : 10,
     paddingBottom: 0,
+    marginBottom: 0,
   },
   headerTopRow: {
     flexDirection: 'row',
