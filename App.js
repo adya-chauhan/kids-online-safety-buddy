@@ -1517,6 +1517,30 @@ export default function App() {
                   />
                 </View>
 
+                {/* Horizontal Filter Chips (Five Ovals next to each other) */}
+                <ScrollView 
+                  horizontal={true} 
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.filterRow}
+                  contentContainerStyle={styles.filterContent}
+                >
+                  <TouchableOpacity style={[styles.filterChip, styles.filterChipActive]} onPress={() => alert("Showing All chats")}>
+                    <Text style={styles.filterChipTextActive}>All</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Unread chats")}>
+                    <Text style={styles.filterChipText}>Unread</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Friends")}>
+                    <Text style={styles.filterChipText}>Friends</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Family")}>
+                    <Text style={styles.filterChipText}>Family</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Groups")}>
+                    <Text style={styles.filterChipText}>Groups</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+
                 {/* Archived Row */}
                 <TouchableOpacity 
                   style={styles.archivedRow} 
@@ -1928,6 +1952,38 @@ const styles = StyleSheet.create({
     fontSize: 15,
     borderWidth: 1,
     borderColor: '#CBD5E1',
+  },
+  filterRow: {
+    paddingHorizontal: 24,
+    marginBottom: 12,
+  },
+  filterContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 10,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  filterChipActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E40AF',
+  },
+  filterChipTextActive: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   scrollList: {
     flex: 1,
