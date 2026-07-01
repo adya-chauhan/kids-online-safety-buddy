@@ -90,16 +90,16 @@ const initialProfilesData = [
   },
   {
     id: '6',
-    name: 'Kishu',
+    name: 'Keisha',
     role: 'Brother 👦',
     avatar: require('./assets/avatar_kishu.jpg'),
     status: 'online',
-    statusText: '🏀 Basketball in the driveway',
+    statusText: '🏓 Playing pickleball',
     time: '3h ago',
     unread: 0,
-    email: 'kishu@family.org',
+    email: 'keisha@family.org',
     phone: 'Shared Family Phone',
-    bio: 'Loves playing basketball, console gaming, and helping with computer coding stuff! 🏀🎮💻',
+    bio: 'loves playing pickleball, loves studying, and loves computer coding 🏓📚💻',
     lastUpdated: Date.now() - 180 * 60 * 1000
   }
 ];
@@ -201,12 +201,12 @@ const autoReplies = {
     "Remember to always be safe, kind, and friendly online! 🛡️"
   ],
   '6': [
-    "Hey, what's up? Want to play some basketball in the driveway later? 🏀",
+    "Hey, what's up? Want to play some pickleball later? 🏓",
     "Are you playing video games again? You are such a trash player! Get good! 😜",
-    "I'm working on my high school science project. Pretty cool coding stuff! 💻",
+    "I'm working on my science project. I love studying! 📚",
     "Don't tell Mommy, but I hid the last box of cookies in my closet! 🤫🍪",
     "Nice! Let's watch the movie together tonight. 🎬",
-    "You are the best brother/sister! Let me know if you need help with your computer. 🖥️"
+    "You are the best brother/sister! Let me know if you need help with your computer coding. 🖥️"
   ]
 };
 
