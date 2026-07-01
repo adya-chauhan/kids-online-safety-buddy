@@ -207,6 +207,7 @@ export default function App() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectModeActive, setSelectModeActive] = useState(false);
   const [selectedChatIds, setSelectedChatIds] = useState([]);
+  const [activeTab, setActiveTab] = useState('chats'); // 'chats', 'safety', 'profile'
   
   const chatScrollRef = useRef(null);
 
@@ -239,6 +240,171 @@ export default function App() {
     ));
     setSelectedChatIds([]);
     setSelectModeActive(false);
+  };
+
+  // Bottom navigation tab bar component
+  const renderTabBar = () => {
+    if (activeChat) return null;
+    
+    return (
+      <View style={styles.tabBar}>
+        <TouchableOpacity 
+          style={[styles.tabItem, activeTab === 'chats' && styles.tabItemActive]}
+          onPress={() => setActiveTab('chats')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'chats' && styles.tabIconActive]}>💬</Text>
+          <Text style={[styles.tabLabel, activeTab === 'chats' && styles.tabLabelActive]}>Chats</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.tabItem, activeTab === 'safety' && styles.tabItemActive]}
+          onPress={() => setActiveTab('safety')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'safety' && styles.tabIconActive]}>🛡️</Text>
+          <Text style={[styles.tabLabel, activeTab === 'safety' && styles.tabLabelActive]}>Safety Tips</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.tabItem, activeTab === 'profile' && styles.tabItemActive]}
+          onPress={() => setActiveTab('profile')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'profile' && styles.tabIconActive]}>👤</Text>
+          <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]}>My Profile</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // Educational Safety Tips screen
+  const renderSafetyScreen = () => {
+    return (
+      <View style={styles.tabContentContainer}>
+        {/* Safety Header */}
+        <View style={styles.headerVertical}>
+          <View style={styles.headerTopRow}>
+            <View style={styles.safetyHeaderBadge}>
+              <Text style={styles.safetyHeaderBadgeText}>🛡️ Safety Center</Text>
+            </View>
+          </View>
+          <View style={styles.headerBottomRow}>
+            <Text style={styles.headerTitle}>Safety Guide</Text>
+          </View>
+        </View>
+
+        <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
+          {/* Intro Mascot Card */}
+          <View style={styles.safetyIntroCard}>
+            <Image source={require('./assets/mascot_navi.jpg')} style={styles.safetyIntroMascot} />
+            <View style={styles.safetyIntroTextWrapper}>
+              <Text style={styles.safetyIntroTitle}>Meet Navi!</Text>
+              <Text style={styles.safetyIntroBody}>
+                I'm your safety buddy. I'll pop up to help you make kind and safe choices online!
+              </Text>
+            </View>
+          </View>
+
+          {/* Safety rules list */}
+          <View style={styles.safetyCard}>
+            <Text style={styles.safetyCardEmoji}>🔒</Text>
+            <View style={styles.safetyCardContent}>
+              <Text style={styles.safetyCardTitle}>Keep Secrets Safe</Text>
+              <Text style={styles.safetyCardBody}>
+                Never share personal details like your address, phone number, passwords, or school name.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.safetyCard}>
+            <Text style={styles.safetyCardEmoji}>💬</Text>
+            <View style={styles.safetyCardContent}>
+              <Text style={styles.safetyCardTitle}>Be Kind Online</Text>
+              <Text style={styles.safetyCardBody}>
+                Always treat others with respect and use kind words. Cyberbullying hurts real feelings.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.safetyCard}>
+            <Text style={styles.safetyCardEmoji}>🔀</Text>
+            <View style={styles.safetyCardContent}>
+              <Text style={styles.safetyCardTitle}>Ignore and Pivot</Text>
+              <Text style={styles.safetyCardBody}>
+                If someone asks you for a secret, you don't have to answer! You can ignore it and change the topic.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.safetyCard}>
+            <Text style={styles.safetyCardEmoji}>❤️</Text>
+            <View style={styles.safetyCardContent}>
+              <Text style={styles.safetyCardTitle}>Tell a Trusted Adult</Text>
+              <Text style={styles.safetyCardBody}>
+                If a message makes you feel scared, sad, or confused, always show it to a parent or teacher.
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Gamified Profile screen for child
+  const renderProfileScreen = () => {
+    return (
+      <View style={styles.tabContentContainer}>
+        {/* Profile Header */}
+        <View style={styles.headerVertical}>
+          <View style={styles.headerBottomRow}>
+            <Text style={styles.headerTitle}>My Profile</Text>
+          </View>
+        </View>
+
+        <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
+          {/* Level details card */}
+          <View style={styles.profileAvatarCard}>
+            <View style={styles.profileAvatarBorder}>
+              <Text style={styles.profileAvatarText}>👑</Text>
+            </View>
+            <Text style={styles.profileName}>Junior Defender</Text>
+            <Text style={styles.profileSub}>Level 3 Safety Shield</Text>
+            
+            {/* Progress bar */}
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: '75%' }]} />
+            </View>
+            <Text style={styles.progressLabel}>75% towards Safety Master status</Text>
+          </View>
+
+          {/* Grid of badges */}
+          <Text style={styles.profileSectionLabel}>My Badges</Text>
+          <View style={styles.badgesContainer}>
+            <View style={styles.badgeCard}>
+              <Text style={styles.badgeEmoji}>🛡️</Text>
+              <Text style={styles.badgeTitle}>Privacy Hero</Text>
+              <Text style={styles.badgeDesc}>Kept secret info private</Text>
+            </View>
+            <View style={styles.badgeCard}>
+              <Text style={styles.badgeEmoji}>😊</Text>
+              <Text style={styles.badgeTitle}>Politeness Star</Text>
+              <Text style={styles.badgeDesc}>Used friendly boundary replies</Text>
+            </View>
+            <View style={styles.badgeCard}>
+              <Text style={styles.badgeEmoji}>👩</Text>
+              <Text style={styles.badgeTitle}>Guardian Link</Text>
+              <Text style={styles.badgeDesc}>Communicated with trusted adults</Text>
+            </View>
+            <View style={[styles.badgeCard, styles.badgeCardLocked]}>
+              <Text style={styles.badgeEmojiLocked}>🔒</Text>
+              <Text style={styles.badgeTitleLocked}>Perfect Week</Text>
+              <Text style={styles.badgeDescLocked}>Maintain safe chat for 7 days</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
   };
 
   // Send a safe response message programmatically to resolve the safety alert
@@ -604,111 +770,122 @@ export default function App() {
             )}
           </View>
         ) : (
-          /* Profile List Screen */
+          /* Main Tab Screen */
           <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.headerVertical}>
-              <View style={styles.headerTopRow}>
-                <TouchableOpacity 
-                  style={styles.threeDotsButton}
-                  onPress={() => setMenuVisible(prev => !prev)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.threeDotsText}>•••</Text>
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.headerBottomRow}>
-                <Text style={styles.headerTitle}>Chats</Text>
-                <View style={styles.unreadTotalBadge}>
-                  <Text style={styles.unreadTotalText}>
-                    {profiles.reduce((acc, curr) => acc + curr.unread, 0)} New
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Search Bar */}
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="🔍 Ask Navi something"
-                placeholderTextColor="#6F6D83"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
-
-            {/* Profiles List */}
-            <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
-              {filteredProfiles.length > 0 ? (
-                filteredProfiles.map(profile => {
-                  const isSelected = selectedChatIds.includes(profile.id);
-                  return (
-                    <TouchableOpacity
-                      key={profile.id}
-                      style={[
-                        styles.profileCard,
-                        selectModeActive && isSelected && styles.profileCardSelected
-                      ]}
-                      onPress={() => {
-                        if (selectModeActive) {
-                          toggleChatSelection(profile.id);
-                        } else {
-                          openChat(profile);
-                        }
-                      }}
+            {activeTab === 'chats' && (
+              <>
+                {/* Header */}
+                <View style={styles.headerVertical}>
+                  <View style={styles.headerTopRow}>
+                    <TouchableOpacity 
+                      style={styles.threeDotsButton}
+                      onPress={() => setMenuVisible(prev => !prev)}
                       activeOpacity={0.7}
                     >
-                      {/* Checkbox circle when in select mode */}
-                      {selectModeActive && (
-                        <View style={[
-                          styles.selectCheckbox,
-                          isSelected && styles.selectCheckboxChecked
-                        ]}>
-                          {isSelected && <Text style={styles.selectCheckboxText}>✓</Text>}
-                        </View>
-                      )}
-
-                      {/* Avatar with Status Ring */}
-                      <View style={styles.avatarWrapper}>
-                        <Image source={profile.avatar} style={styles.avatarImage} />
-                        <View style={[
-                          styles.statusDot,
-                          profile.status === 'online' ? styles.statusOnline :
-                          profile.status === 'away' ? styles.statusAway : styles.statusOffline
-                        ]} />
-                      </View>
-
-                      {/* Profile Details */}
-                      <View style={styles.cardInfo}>
-                        <View style={styles.cardHeader}>
-                          <Text style={styles.profileName}>{profile.name}</Text>
-                          <Text style={styles.timeText}>{profile.time}</Text>
-                        </View>
-                        <Text style={styles.profileRole}>{profile.role}</Text>
-                        
-                        {/* Show last message from state */}
-                        <Text style={styles.lastMessageText} numberOfLines={1}>
-                          {messages[profile.id]?.[messages[profile.id].length - 1]?.text || 'No messages yet'}
-                        </Text>
-                      </View>
-
-                      {/* Unread Counter Badge */}
-                      {profile.unread > 0 && (
-                        <View style={styles.unreadBadge}>
-                          <Text style={styles.unreadBadgeText}>{profile.unread}</Text>
-                        </View>
-                      )}
+                      <Text style={styles.threeDotsText}>•••</Text>
                     </TouchableOpacity>
-                  );
-                })
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No profiles found matching your search</Text>
+                  </View>
+                  
+                  <View style={styles.headerBottomRow}>
+                    <Text style={styles.headerTitle}>Chats</Text>
+                    <View style={styles.unreadTotalBadge}>
+                      <Text style={styles.unreadTotalText}>
+                        {profiles.reduce((acc, curr) => acc + curr.unread, 0)} New
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              )}
-            </ScrollView>
+
+                {/* Search Bar */}
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="🔍 Ask Navi something"
+                    placeholderTextColor="#6F6D83"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
+
+                {/* Profiles List */}
+                <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
+                  {filteredProfiles.length > 0 ? (
+                    filteredProfiles.map(profile => {
+                      const isSelected = selectedChatIds.includes(profile.id);
+                      return (
+                        <TouchableOpacity
+                          key={profile.id}
+                          style={[
+                            styles.profileCard,
+                            selectModeActive && isSelected && styles.profileCardSelected
+                          ]}
+                          onPress={() => {
+                            if (selectModeActive) {
+                              toggleChatSelection(profile.id);
+                            } else {
+                              openChat(profile);
+                            }
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          {/* Checkbox circle when in select mode */}
+                          {selectModeActive && (
+                            <View style={[
+                              styles.selectCheckbox,
+                              isSelected && styles.selectCheckboxChecked
+                            ]}>
+                              {isSelected && <Text style={styles.selectCheckboxText}>✓</Text>}
+                            </View>
+                          )}
+
+                          {/* Avatar with Status Ring */}
+                          <View style={styles.avatarWrapper}>
+                            <Image source={profile.avatar} style={styles.avatarImage} />
+                            <View style={[
+                              styles.statusDot,
+                              profile.status === 'online' ? styles.statusOnline :
+                              profile.status === 'away' ? styles.statusAway : styles.statusOffline
+                            ]} />
+                          </View>
+
+                          {/* Profile Details */}
+                          <View style={styles.cardInfo}>
+                            <View style={styles.cardHeader}>
+                              <Text style={styles.profileName}>{profile.name}</Text>
+                              <Text style={styles.timeText}>{profile.time}</Text>
+                            </View>
+                            <Text style={styles.profileRole}>{profile.role}</Text>
+                            
+                            {/* Show last message from state */}
+                            <Text style={styles.lastMessageText} numberOfLines={1}>
+                              {messages[profile.id]?.[messages[profile.id].length - 1]?.text || 'No messages yet'}
+                            </Text>
+                          </View>
+
+                          {/* Unread Counter Badge */}
+                          {profile.unread > 0 && (
+                            <View style={styles.unreadBadge}>
+                              <Text style={styles.unreadBadgeText}>{profile.unread}</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })
+                  ) : (
+                    <View style={styles.emptyContainer}>
+                      <Text style={styles.emptyText}>No profiles found matching your search</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              </>
+            )}
+
+            {activeTab === 'safety' && renderSafetyScreen()}
+
+            {activeTab === 'profile' && renderProfileScreen()}
+
+            {/* Bottom Tab Bar */}
+            {renderTabBar()}
           </View>
         )}
 
@@ -1756,5 +1933,238 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#64748B',
+  },
+  // Tab Bar styles
+  tabContentContainer: {
+    flex: 1,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    height: 60,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingBottom: Platform.OS === 'ios' ? 15 : 0,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+  },
+  tabItemActive: {
+    backgroundColor: '#F8FAFC',
+  },
+  tabIcon: {
+    fontSize: 20,
+    color: '#94A3B8',
+  },
+  tabIconActive: {
+    transform: [{ scale: 1.1 }],
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    marginTop: 2,
+  },
+  tabLabelActive: {
+    color: '#3B82F6',
+  },
+  
+  // Safety tips styles
+  safetyHeaderBadge: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  safetyHeaderBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  safetyIntroCard: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 18,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  safetyIntroMascot: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  safetyIntroTextWrapper: {
+    flex: 1,
+  },
+  safetyIntroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E3A8A',
+    marginBottom: 4,
+  },
+  safetyIntroBody: {
+    fontSize: 13,
+    color: '#3B82F6',
+    lineHeight: 18,
+  },
+  safetyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  safetyCardEmoji: {
+    fontSize: 28,
+  },
+  safetyCardContent: {
+    flex: 1,
+  },
+  safetyCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  safetyCardBody: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
+  },
+
+  // Profile styles
+  profileAvatarCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 20,
+  },
+  profileAvatarBorder: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 3,
+    borderColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  profileAvatarText: {
+    fontSize: 36,
+  },
+  profileSub: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D97706',
+    marginBottom: 12,
+  },
+  progressBarBg: {
+    width: '80%',
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#E2E8F0',
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 5,
+    backgroundColor: '#10B981',
+  },
+  progressLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  profileSectionLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  badgeCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    width: '47%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  badgeEmoji: {
+    fontSize: 32,
+    marginBottom: 6,
+  },
+  badgeTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  badgeDesc: {
+    fontSize: 9,
+    color: '#64748B',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  badgeCardLocked: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#F1F5F9',
+    opacity: 0.6,
+  },
+  badgeEmojiLocked: {
+    fontSize: 24,
+    color: '#94A3B8',
+    marginBottom: 12,
+  },
+  badgeTitleLocked: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
+  badgeDescLocked: {
+    fontSize: 9,
+    color: '#94A3B8',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });
