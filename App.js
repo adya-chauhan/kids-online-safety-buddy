@@ -29,7 +29,8 @@ const initialProfilesData = [
     unread: 3,
     email: 'sara@kidsmail.org',
     phone: 'Family iPad',
-    bio: 'Loves playing with toys, drawing rainbows, and eating ice cream! 🍦'
+    bio: 'Loves playing with toys, drawing rainbows, and eating ice cream! 🍦',
+    lastUpdated: Date.now() - 2 * 60 * 1000
   },
   {
     id: '2',
@@ -42,7 +43,8 @@ const initialProfilesData = [
     unread: 1,
     email: 'anvi@kidsmail.org',
     phone: 'Family Tablet',
-    bio: 'Loves building Lego castles, playing video games, and soccer.'
+    bio: 'Loves building Lego castles, playing video games, and soccer.',
+    lastUpdated: Date.now() - 45 * 60 * 1000
   },
   {
     id: '3',
@@ -55,7 +57,8 @@ const initialProfilesData = [
     unread: 0,
     email: 'tanvi@kidsmail.org',
     phone: 'None',
-    bio: 'Loves reading storybooks, playing badminton, and dancing. 💃'
+    bio: 'Loves reading storybooks, playing badminton, and dancing. 💃',
+    lastUpdated: Date.now() - 120 * 60 * 1000
   },
   {
     id: '4',
@@ -68,7 +71,8 @@ const initialProfilesData = [
     unread: 0,
     email: 'mommy@family.org',
     phone: '+1 (555) 000-1111',
-    bio: "Always looking out for you. Loves gardening, cooking delicious meals, and checking in on how you're doing."
+    bio: "Always looking out for you. Loves gardening, cooking delicious meals, and checking in on how you're doing.",
+    lastUpdated: Date.now() - 24 * 60 * 60 * 1000
   }
 ];
 
@@ -955,6 +959,13 @@ export default function App() {
       [contactId]: [...(prev[contactId] || []), newMsg]
     }));
 
+    // Update profile card info (bring to top of list)
+    setProfiles(prev => prev.map(p => 
+      p.id === contactId 
+        ? { ...p, time: timeStr, lastUpdated: Date.now() } 
+        : p
+    ));
+
     // Scan image safety with Gemma
     const imageSafety = await checkImageSafetyWithGemma(uri);
     if (imageSafety) {
@@ -991,6 +1002,13 @@ export default function App() {
           ...prev,
           [contactId]: [...(prev[contactId] || []), replyMsg]
         }));
+
+        // Update profile card info (bring to top of list)
+        setProfiles(prev => prev.map(p => 
+          p.id === contactId 
+            ? { ...p, time: replyMsg.time, lastUpdated: Date.now() } 
+            : p
+        ));
       }, 1500);
     }
   };
@@ -1057,11 +1075,13 @@ export default function App() {
     })
   ).current;
 
-  // Filter profiles based on search
-  const filteredProfiles = profiles.filter(profile => 
-    profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    profile.role.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter profiles based on search and sort by lastUpdated (newest first!)
+  const filteredProfiles = profiles
+    .filter(profile => 
+      profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      profile.role.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
 
   // Clear unread count when opening a chat
   const openChat = (profile) => {
@@ -1104,6 +1124,13 @@ export default function App() {
       ...prev,
       [contactId]: [...(prev[contactId] || []), newMsg]
     }));
+
+    // Update profile card info (bring to top of list)
+    setProfiles(prev => prev.map(p => 
+      p.id === contactId 
+        ? { ...p, time: timeStr, lastUpdated: Date.now() } 
+        : p
+    ));
 
     setInputText('');
 
@@ -1162,6 +1189,13 @@ export default function App() {
           ...prev,
           [contactId]: [...(prev[contactId] || []), replyMsg]
         }));
+
+        // Update profile card info (bring to top of list)
+        setProfiles(prev => prev.map(p => 
+          p.id === contactId 
+            ? { ...p, time: replyMsg.time, lastUpdated: Date.now() } 
+            : p
+        ));
 
         // Scan contact's received message for safety if it's NOT Mommy (trusted parent)
         if (contactId !== '4') {
