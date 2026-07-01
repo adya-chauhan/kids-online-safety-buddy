@@ -90,14 +90,14 @@ const initialProfilesData = [
   },
   {
     id: '6',
-    name: 'Keisha',
+    name: 'Kishu',
     role: 'Brother 👦',
     avatar: require('./assets/avatar_kishu.jpg'),
     status: 'online',
     statusText: '🏓 Playing pickleball',
     time: '3h ago',
     unread: 0,
-    email: 'keisha@family.org',
+    email: 'kishu@family.org',
     phone: 'Shared Family Phone',
     bio: 'loves playing pickleball, loves studying, and loves computer coding 🏓📚💻',
     lastUpdated: Date.now() - 180 * 60 * 1000
