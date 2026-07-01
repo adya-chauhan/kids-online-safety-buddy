@@ -672,8 +672,76 @@ export default function App() {
     setNaviSpeechVisible(false);
   };
 
-  const handleNaviRespondPolitely = () => {
-    sendSafeFeedback("Thank you, but let's keep our conversation friendly and kind! 😊");
+  const generateLocalModelResponse = async (contextText) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3-second timeout
+
+    const promptText = `You are a child safety assistant named Navi. The child received this rude message: "${contextText}". The child wants to respond politely to keep the conversation kind. Write a very short, polite, child-friendly response (1 sentence, max 15 words) that sets a kind boundary. Do not repeat the rude message. Output ONLY the response text itself, no explanations, no quotes.`;
+
+    try {
+      // First, try the known machine IP (physical devices on local network)
+      const response = await fetch('http://192.168.0.158:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama3.2:3b',
+          prompt: promptText,
+          stream: false
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const json = await response.json();
+        if (json && json.response) {
+          return json.response.trim().replace(/^["']|["']$/g, ''); // strip outer quotes
+        }
+      }
+    } catch (e) {
+      console.log("Local model on primary IP failed or timed out, trying localhost...", e);
+    }
+
+    // Fallback to localhost (simulators)
+    const controllerLocal = new AbortController();
+    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 2000);
+    try {
+      const response = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama3.2:3b',
+          prompt: promptText,
+          stream: false
+        }),
+        signal: controllerLocal.signal
+      });
+      clearTimeout(timeoutIdLocal);
+
+      if (response.ok) {
+        const json = await response.json();
+        if (json && json.response) {
+          return json.response.trim().replace(/^["']|["']$/g, '');
+        }
+      }
+    } catch (e) {
+      console.log("Local model on localhost failed or timed out:", e);
+    }
+
+    // Default static fallback response
+    return "Thank you, but let's keep our conversation friendly and kind! 😊";
+  };
+
+  const handleNaviRespondPolitely = async () => {
+    const contactId = activeChat.id;
+    const activeMessages = messages[contactId] || [];
+    const lastMsg = activeMessages.length > 0 ? activeMessages[activeMessages.length - 1].text : "";
+
+    setSafetyCategory(null);
+    setNaviSpeechVisible(false);
+
+    const politeReply = await generateLocalModelResponse(lastMsg);
+    sendSafeFeedback(politeReply);
   };
 
   const handleNaviIgnorePivot = () => {
