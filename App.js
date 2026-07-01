@@ -92,8 +92,10 @@ const initialMessagesData = {
 const autoReplies = {
   '1': [
     "Look at the drawing of a unicorn I made! It has wings and a golden horn! 🦄",
+    "Why are you so slow? You are such a stupid loser at this game! Go away! 🎮",
     "I want chocolate! Can you ask Mommy if we can get ice cream later? 🍦",
     "Let's play tag! You're it! No tag-backs! 🏃‍♀️",
+    "You are being so mean and rude today. I hate you! 😠",
     "Yay! You are the best friend ever!",
     "My loose tooth just fell out! Now the tooth fairy is gonna visit me! 🦷",
     "I got a new coloring book with Disney princesses! Want to color with me? 🎨",
@@ -106,8 +108,10 @@ const autoReplies = {
   ],
   '2': [
     "I beat my high score in the video game! I got 10,000 points! 🎮",
+    "Shut up, you don't know how to build Lego spaceships. You are a weirdo! 🚀",
     "Can we play Minecraft later? I want to build a giant castle with a lava moat! 🏰",
     "Where is my blue Lego piece? I need it to finish my big spaceship! 🚀",
+    "You are an ugly jerk! I don't want to play with you anymore! 😡",
     "Vroom vroom! I'm a super fast race car! 🏎️",
     "I learned a new trick on my skateboard today. I didn't even fall once!",
     "Do you want to see my collection of cool shiny rocks? I found a purple one! 💎",
@@ -120,8 +124,10 @@ const autoReplies = {
   ],
   '3': [
     "I'm reading a really cool adventure book about a magic treehouse! 📖",
+    "You are so bad at this game! Only a complete fool would play like that! 🙄",
     "Do you want to play badminton in the park after school today? 🏸",
     "I learned a new dance routine in my class today! It's so fast! 💃",
+    "Why are you being so fat and lazy? Go run outside and practice! 🏃‍♀️",
     "Let's work on our science volcano project! We need baking soda and vinegar. 🌋",
     "I got a shiny new gel pen set! They smell like fruits! ✍️",
     "Can we bake chocolate chip cookies later? I want to lick the spoon! 🍪",
