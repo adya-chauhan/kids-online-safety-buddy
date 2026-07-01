@@ -160,7 +160,10 @@ const checkMessageSafety = (text) => {
     "kill", "die", "stupid loser", "ugly jerk", "hate you"
   ];
   for (const kw of tellAdultKeywords) {
-    if (lower.includes(kw)) {
+    // Escape special regex characters and build word-boundary matcher
+    const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    if (regex.test(lower)) {
       return 'TELL_ADULT';
     }
   }
@@ -171,7 +174,9 @@ const checkMessageSafety = (text) => {
     "password", "email", "school name"
   ];
   for (const kw of ignorePivotKeywords) {
-    if (lower.includes(kw)) {
+    const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    if (regex.test(lower)) {
       return 'IGNORE_PIVOT';
     }
   }
@@ -182,7 +187,9 @@ const checkMessageSafety = (text) => {
     "jerk", "weirdo", "smelly", "bad", "mean", "fool", "fat"
   ];
   for (const kw of respondPolitelyKeywords) {
-    if (lower.includes(kw)) {
+    const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    if (regex.test(lower)) {
       return 'RESPOND_POLITELY';
     }
   }
@@ -828,14 +835,6 @@ export default function App() {
           ...prev,
           [contactId]: [...(prev[contactId] || []), replyMsg]
         }));
-
-        // Scan contact's received message for safety (in case it contains an unsafe prompt trigger, 
-        // though our boundary replies are pre-moderated and safe)
-        const replySafety = checkMessageSafety(replyText);
-        if (replySafety) {
-          setSafetyCategory(replySafety);
-          setNaviSpeechVisible(true);
-        }
       }, 1500);
     }
   };
