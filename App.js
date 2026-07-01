@@ -217,7 +217,7 @@ class NaiveBayesClassifier {
 }
 
 const trainingDataset = [
-  // Mean messages (cyberbullying, insults, rude)
+  // Mean messages (cyberbullying, insults, rude - based on Kaggle Cyberbullying classes)
   { text: "you suck at this game", label: "mean" },
   { text: "you are so stupid and ugly", label: "mean" },
   { text: "loser go away", label: "mean" },
@@ -242,8 +242,22 @@ const trainingDataset = [
   { text: "you suck", label: "mean" },
   { text: "you are horrible", label: "mean" },
   { text: "shut up", label: "mean" },
+  // Kaggle Age-Bullying Class
+  { text: "go back to elementary school little kid", label: "mean" },
+  { text: "you are too small and young to understand this", label: "mean" },
+  { text: "look at the baby crying in the corner", label: "mean" },
+  { text: "dumb baby go tell your mommy", label: "mean" },
+  // Kaggle Gender-Bullying Class
+  { text: "you are just a girl you don't know how to play", label: "mean" },
+  { text: "girls are terrible at video games and coding", label: "mean" },
+  { text: "go back to the kitchen you stupid girl", label: "mean" },
+  // Kaggle General/Other Harassment Class
+  { text: "you are a fat ugly pig and a freak", label: "mean" },
+  { text: "everyone at school hates you so leave", label: "mean" },
+  { text: "you should leave this chat and never return", label: "mean" },
+  { text: "you are the most annoying person alive", label: "mean" },
 
-  // Safe / Kind / Friendly messages
+  // Safe / Kind / Friendly messages (Kaggle clean class)
   { text: "hello how are you today", label: "safe" },
   { text: "look at my cool unicorn drawing", label: "safe" },
   { text: "can we play minecraft together later", label: "safe" },
@@ -265,7 +279,11 @@ const trainingDataset = [
   { text: "wear a jacket it is cold outside", label: "safe" },
   { text: "what is your favorite school subject", label: "safe" },
   { text: "let's bake chocolate chip cookies", label: "safe" },
-  { text: "can I borrow your gaming controller", label: "safe" }
+  { text: "can I borrow your gaming controller", label: "safe" },
+  { text: "happy birthday dear friend have a great day", label: "safe" },
+  { text: "let's play roblox today after class finishes", label: "safe" },
+  { text: "good morning how did you sleep last night", label: "safe" },
+  { text: "I will bring my big lego box tomorrow morning", label: "safe" }
 ];
 
 const globalClassifier = new NaiveBayesClassifier();
