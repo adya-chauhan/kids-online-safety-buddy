@@ -208,6 +208,7 @@ export default function App() {
   const [selectModeActive, setSelectModeActive] = useState(false);
   const [selectedChatIds, setSelectedChatIds] = useState([]);
   const [activeTab, setActiveTab] = useState('chats'); // 'chats', 'safety', 'profile'
+  const [activeCall, setActiveCall] = useState(null); // { contactName, type: 'video' | 'voice' }
   
   const chatScrollRef = useRef(null);
 
@@ -1135,6 +1136,25 @@ export default function App() {
             >
               {selectedProfile && (
                 <>
+                  {/* Floating Top Right Calling Oval */}
+                  <View style={styles.modalCallingOval}>
+                    <TouchableOpacity 
+                      style={styles.modalCallingIconBtn}
+                      onPress={() => setActiveCall({ contactName: selectedProfile.name, type: 'video' })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.modalCallingIconText}>📹</Text>
+                    </TouchableOpacity>
+                    <View style={styles.modalCallingDivider} />
+                    <TouchableOpacity 
+                      style={styles.modalCallingIconBtn}
+                      onPress={() => setActiveCall({ contactName: selectedProfile.name, type: 'voice' })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.modalCallingIconText}>📞</Text>
+                    </TouchableOpacity>
+                  </View>
+
                   {/* Top drag handle area triggers swipe down */}
                   <View 
                     style={styles.dragHandleArea} 
@@ -1206,6 +1226,32 @@ export default function App() {
                 </>
               )}
             </Animated.View>
+          </View>
+        </Modal>
+
+        {/* Mock Call Overlay */}
+        <Modal
+          visible={activeCall !== null}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setActiveCall(null)}
+        >
+          <View style={styles.callOverlay}>
+            <View style={styles.callModalCard}>
+              <Text style={styles.callMascotEmoji}>{activeCall?.type === 'video' ? '📹' : '📞'}</Text>
+              <Text style={styles.callTitle}>
+                {activeCall?.type === 'video' ? 'Video Calling...' : 'Calling...'}
+              </Text>
+              <Text style={styles.callContactName}>{activeCall?.contactName}</Text>
+              <Text style={styles.callTimer}>Navi is securing this call 🛡️</Text>
+              
+              <TouchableOpacity 
+                style={styles.callDeclineBtn}
+                onPress={() => setActiveCall(null)}
+              >
+                <Text style={styles.callDeclineBtnText}>End Call</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Modal>
 
@@ -2700,5 +2746,95 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#475569',
+  },
+  // Profile Modal Calling Oval
+  modalCallingOval: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    zIndex: 100,
+  },
+  modalCallingIconBtn: {
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCallingIconText: {
+    fontSize: 16,
+  },
+  modalCallingDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 8,
+  },
+  // Call Overlay styles
+  callOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    zIndex: 999,
+  },
+  callModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 32,
+    alignItems: 'center',
+    width: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  callMascotEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  callTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#3B82F6',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  callContactName: {
+    fontSize: 24,
+    fontWeight: '950',
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  callTimer: {
+    fontSize: 13,
+    color: '#10B981',
+    fontWeight: '700',
+    marginBottom: 32,
+  },
+  callDeclineBtn: {
+    backgroundColor: '#EF4444',
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 24,
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  callDeclineBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '850',
   },
 });
