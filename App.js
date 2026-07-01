@@ -1051,6 +1051,25 @@ export default function App() {
                     >
                       <Text style={styles.threeDotsText}>•••</Text>
                     </TouchableOpacity>
+                    
+                    {/* Top Right Action Circles */}
+                    <View style={styles.headerTopRightActions}>
+                      <TouchableOpacity 
+                        style={styles.headerTopCircleBtn}
+                        onPress={() => alert("Create a new chat! ＋")}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.headerTopCircleText}>＋</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={styles.headerTopCircleBtn}
+                        onPress={() => alert("Open camera to share a status update! 📷")}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.headerTopCircleText}>📷</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   
                   <View style={styles.headerBottomRow}>
@@ -2052,7 +2071,8 @@ const styles = StyleSheet.create({
   },
   headerTopRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
   },
   headerBottomRow: {
@@ -2074,6 +2094,31 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  headerTopRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTopCircleBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  headerTopCircleText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#64748B',
   },
   threeDotsText: {
     fontSize: 16,
