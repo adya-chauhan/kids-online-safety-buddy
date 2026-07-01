@@ -902,6 +902,13 @@ export default function App() {
               style={styles.messagesList}
               contentContainerStyle={styles.messagesContent}
             >
+              {/* Center Date Separator Oval */}
+              <View style={styles.dateSeparatorWrapper}>
+                <View style={styles.dateSeparatorOval}>
+                  <Text style={styles.dateSeparatorText}>Today</Text>
+                </View>
+              </View>
+
               {messages[activeChat.id]?.map((msg) => (
                 <View 
                   key={msg.id} 
@@ -2791,6 +2798,27 @@ const styles = StyleSheet.create({
     height: 12,
     backgroundColor: '#CBD5E1',
     marginHorizontal: 8,
+  },
+  // Date Separator styles
+  dateSeparatorWrapper: {
+    alignItems: 'center',
+    marginVertical: 12,
+    width: '100%',
+  },
+  dateSeparatorOval: {
+    backgroundColor: 'rgba(241, 245, 249, 0.9)',
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  dateSeparatorText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   // Profile Modal Calling Oval
   modalCallingOval: {
