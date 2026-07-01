@@ -661,15 +661,12 @@ export default function App() {
     setNaviSpeechVisible(false);
   };
 
-  const handleNaviIgnore = () => {
-    // Simply clear Navi and dismiss the alert (doing nothing/ignoring)
-    setSafetyCategory(null);
-    setNaviSpeechVisible(false);
+  const handleNaviRespondPolitely = () => {
+    sendSafeFeedback("Thank you, but let's keep our conversation friendly and kind! 😊");
   };
 
-  const handleNaviPivotRespond = () => {
-    // Send a polite response that pivots the topic
-    sendSafeFeedback("Thank you, but let's keep our conversation friendly and kind! What's your favorite school subject? 📚");
+  const handleNaviIgnorePivot = () => {
+    sendSafeFeedback("Hey, let's talk about something else! What's your favorite school subject? 📚");
   };
 
   const handleNaviTellAdult = () => {
@@ -835,6 +832,15 @@ export default function App() {
           ...prev,
           [contactId]: [...(prev[contactId] || []), replyMsg]
         }));
+
+        // Scan contact's received message for safety if it's NOT Mommy (trusted parent)
+        if (contactId !== '4') {
+          const replySafety = checkMessageSafety(replyText);
+          if (replySafety) {
+            setSafetyCategory(replySafety);
+            setNaviSpeechVisible(true);
+          }
+        }
       }, 1500);
     }
   };
@@ -981,16 +987,16 @@ export default function App() {
                     {/* Safety Options */}
                     <TouchableOpacity 
                       style={styles.naviOptionBtn}
-                      onPress={handleNaviIgnore}
+                      onPress={handleNaviIgnorePivot}
                     >
-                      <Text style={styles.naviOptionText}>🔕 Ignore</Text>
+                      <Text style={styles.naviOptionText}>🔀 Ignore and pivot</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity 
                       style={styles.naviOptionBtn}
-                      onPress={handleNaviPivotRespond}
+                      onPress={handleNaviRespondPolitely}
                     >
-                      <Text style={styles.naviOptionText}>💬 Pivot and respond politely</Text>
+                      <Text style={styles.naviOptionText}>💬 Respond politely</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity 
