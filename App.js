@@ -155,7 +155,7 @@ const autoReplies = {
 };
 
 // Client-side Offline Safety Scanner for kids safety buddy Navi
-const checkMessageSafety = (text) => {
+const checkMessageSafety = (text, isUser = true) => {
   if (!text) return null;
   const lower = text.toLowerCase();
   
@@ -165,7 +165,10 @@ const checkMessageSafety = (text) => {
     "meet me", "where are you", "what is your address", "hurt", 
     "kill", "die", "stupid loser", "ugly jerk", "hate you"
   ];
-  for (const kw of tellAdultKeywords) {
+  // If not user (i.e. contact), we only check for direct cyberbullying triggers, not friendly meetups/secrets
+  const tellAdultFiltered = isUser ? tellAdultKeywords : ["stupid loser", "ugly jerk", "hate you", "hurt", "kill", "die"];
+
+  for (const kw of tellAdultFiltered) {
     // Escape special regex characters and build word-boundary matcher
     const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     const regex = new RegExp(`\\b${escaped}\\b`, 'i');
@@ -174,20 +177,22 @@ const checkMessageSafety = (text) => {
     }
   }
 
-  // Medium risk / Private Info / Ignore & Pivot triggers
-  const ignorePivotKeywords = [
-    "phone", "number", "address", "where do you live", "secret", 
-    "password", "email", "school name"
-  ];
-  for (const kw of ignorePivotKeywords) {
-    const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-    if (regex.test(lower)) {
-      return 'IGNORE_PIVOT';
+  // Medium risk / Private Info / Ignore & Pivot triggers (only checked for user messages)
+  if (isUser) {
+    const ignorePivotKeywords = [
+      "phone", "number", "address", "where do you live", "secret", 
+      "password", "email", "school name"
+    ];
+    for (const kw of ignorePivotKeywords) {
+      const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+      if (regex.test(lower)) {
+        return 'IGNORE_PIVOT';
+      }
     }
   }
 
-  // General Mean / Rude words / Respond Politely triggers
+  // General Mean / Rude words / Respond Politely triggers (checked for both user and contact!)
   const respondPolitelyKeywords = [
     "hate", "stupid", "dumb", "ugly", "shut up", "loser", 
     "jerk", "weirdo", "smelly", "bad", "mean", "fool", "fat"
@@ -784,7 +789,7 @@ export default function App() {
     setInputText('');
 
     // Scan user's sent message for mean/unsafe content AFTER it is sent
-    const safety = checkMessageSafety(messageText);
+    const safety = checkMessageSafety(messageText, true);
     if (safety) {
       setSafetyCategory(safety);
       setNaviSpeechVisible(true);
@@ -801,7 +806,7 @@ export default function App() {
         setIsTyping(false);
         
         let replyText = "";
-        const userMsgSafety = checkMessageSafety(messageText);
+        const userMsgSafety = checkMessageSafety(messageText, true);
 
         if (userMsgSafety) {
           // If the child was mean or unsafe, the contact replies with a polite boundary or safe pivot
@@ -841,7 +846,7 @@ export default function App() {
 
         // Scan contact's received message for safety if it's NOT Mommy (trusted parent)
         if (contactId !== '4') {
-          const replySafety = checkMessageSafety(replyText);
+          const replySafety = checkMessageSafety(replyText, false);
           if (replySafety) {
             setSafetyCategory(replySafety);
             setNaviSpeechVisible(true);
