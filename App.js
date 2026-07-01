@@ -875,6 +875,25 @@ export default function App() {
                   </Text>
                 </View>
               </TouchableOpacity>
+
+              {/* Top Right Calling Oval */}
+              <View style={styles.chatHeaderCallingOval}>
+                <TouchableOpacity 
+                  style={styles.chatHeaderCallingBtn}
+                  onPress={() => setActiveCall({ contactName: activeChat.name, type: 'video' })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.chatHeaderCallingText}>📹</Text>
+                </TouchableOpacity>
+                <View style={styles.chatHeaderCallingDivider} />
+                <TouchableOpacity 
+                  style={styles.chatHeaderCallingBtn}
+                  onPress={() => setActiveCall({ contactName: activeChat.name, type: 'voice' })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.chatHeaderCallingText}>📞</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Chat Messages */}
@@ -2746,6 +2765,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#475569',
+  },
+  // Active Chat Header Calling Oval
+  chatHeaderCallingOval: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 18,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    marginLeft: 12,
+  },
+  chatHeaderCallingBtn: {
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chatHeaderCallingText: {
+    fontSize: 14,
+  },
+  chatHeaderCallingDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 8,
   },
   // Profile Modal Calling Oval
   modalCallingOval: {
