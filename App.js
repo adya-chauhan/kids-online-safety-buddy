@@ -1506,52 +1506,55 @@ export default function App() {
                   </View>
                 </View>
 
-                {/* Search Bar */}
-                <View style={styles.searchContainer}>
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="🔍 Ask Navi something"
-                    placeholderTextColor="#6F6D83"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                  />
-                </View>
-
-                {/* Horizontal Filter Chips (Five Ovals next to each other) */}
-                <ScrollView 
-                  horizontal={true} 
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.filterRow}
-                  contentContainerStyle={styles.filterContent}
-                >
-                  <TouchableOpacity style={[styles.filterChip, styles.filterChipActive]} onPress={() => alert("Showing All chats")}>
-                    <Text style={styles.filterChipTextActive}>All</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Unread chats")}>
-                    <Text style={styles.filterChipText}>Unread</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Friends")}>
-                    <Text style={styles.filterChipText}>Friends</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Family")}>
-                    <Text style={styles.filterChipText}>Family</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Groups")}>
-                    <Text style={styles.filterChipText}>Groups</Text>
-                  </TouchableOpacity>
-                </ScrollView>
-
-                {/* Archived Row */}
-                <TouchableOpacity 
-                  style={styles.archivedRow} 
-                  onPress={() => alert("Open archived chats... 📁")}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.archivedLeft}>
-                    <Text style={styles.archivedText}>Archived</Text>
+                {/* Unified Top Controls Block (Smushed Together, White Background) */}
+                <View style={styles.topControlsBlock}>
+                  {/* Search Bar */}
+                  <View style={styles.searchContainer}>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="🔍 Ask Navi something"
+                      placeholderTextColor="#6F6D83"
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
                   </View>
-                  <Text style={styles.archivedCount}>0</Text>
-                </TouchableOpacity>
+
+                  {/* Horizontal Filter Chips (Five Ovals next to each other) */}
+                  <ScrollView 
+                    horizontal={true} 
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.filterRow}
+                    contentContainerStyle={styles.filterContent}
+                  >
+                    <TouchableOpacity style={[styles.filterChip, styles.filterChipActive]} onPress={() => alert("Showing All chats")}>
+                      <Text style={styles.filterChipTextActive}>All</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Unread chats")}>
+                      <Text style={styles.filterChipText}>Unread</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Friends")}>
+                      <Text style={styles.filterChipText}>Friends</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Family")}>
+                      <Text style={styles.filterChipText}>Family</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Groups")}>
+                      <Text style={styles.filterChipText}>Groups</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+
+                  {/* Archived Row */}
+                  <TouchableOpacity 
+                    style={styles.archivedRow} 
+                    onPress={() => alert("Open archived chats... 📁")}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.archivedLeft}>
+                      <Text style={styles.archivedText}>Archived</Text>
+                    </View>
+                    <Text style={styles.archivedCount}>0</Text>
+                  </TouchableOpacity>
+                </View>
 
                 {/* Profiles List */}
                 <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
@@ -1938,6 +1941,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 12,
+  },
+  topControlsBlock: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    marginTop: 0,
+    marginBottom: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
   searchContainer: {
     paddingHorizontal: 24,
