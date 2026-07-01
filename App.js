@@ -1560,14 +1560,9 @@ export default function App() {
                             </View>
                           )}
 
-                          {/* Avatar with Status Ring */}
+                          {/* Avatar without Status Ring */}
                           <View style={styles.avatarWrapper}>
                             <Image source={profile.avatar} style={styles.avatarImage} />
-                            <View style={[
-                              styles.statusDot,
-                              profile.status === 'online' ? styles.statusOnline :
-                              profile.status === 'away' ? styles.statusAway : styles.statusOffline
-                            ]} />
                           </View>
 
                           {/* Profile Details */}
@@ -1672,11 +1667,6 @@ export default function App() {
                         activeOpacity={0.8}
                       >
                         <Image source={selectedProfile.avatar} style={styles.modalAvatarImage} />
-                        <View style={[
-                          styles.modalStatusDot,
-                          selectedProfile.status === 'online' ? styles.statusOnline :
-                          selectedProfile.status === 'away' ? styles.statusAway : selectedProfile.statusOffline
-                        ]} />
                       </TouchableOpacity>
                       <Text style={styles.modalName}>{selectedProfile.name}</Text>
                       <Text style={styles.modalRole}>{selectedProfile.role}</Text>
