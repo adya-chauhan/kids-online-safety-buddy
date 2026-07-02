@@ -1560,6 +1560,7 @@ Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
                 >
                   <Text style={styles.chatHeaderCallingText}>📞</Text>
                 </TouchableOpacity>
+              </View>
             </View>
 
             {/* Simulation Controls Bar */}
