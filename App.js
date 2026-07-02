@@ -1387,7 +1387,7 @@ Response from ${contact.name}:`;
     setIsTyping(true);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout (give local model enough time to process)
 
     // Determine prompt based on type
     const personality = activeChat.bio;
@@ -1407,8 +1407,13 @@ Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'gemma:2b', // Use gemma:2b (Gemini local equivalent) as requested
-        prompt: promptText,
-        stream: false
+        prompt: promptText + `\nEnsure this response is completely unique, creative, and different from typical responses. Random seed: ${Math.random()}`,
+        stream: false,
+        options: {
+          temperature: 0.95, // High temperature for maximum variety
+          top_p: 0.9,
+          top_k: 40
+        }
       })
     };
 
@@ -1432,7 +1437,7 @@ Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
     if (!replyText) {
       // Try localhost fallback
       const controllerLocal = new AbortController();
-      const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 2000);
+      const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 10000); // 10-second timeout
       try {
         const response = await fetch('http://localhost:11434/api/generate', {
           ...requestOptions,
@@ -1453,9 +1458,22 @@ Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
     // Static fallback if model is unavailable
     if (!replyText) {
       if (type === 'good') {
-        replyText = "I had so much fun playing badminton with you today! 🏸";
+        const staticGoodReplies = [
+          "I had so much fun playing badminton with you today! 🏸",
+          "That sounds awesome! Let's do it after school! 🌟",
+          "Have you seen my new drawing? I can show you tomorrow! 🎨",
+          "Let's play some video games after homework is done! 🎮"
+        ];
+        replyText = staticGoodReplies[Math.floor(Math.random() * staticGoodReplies.length)];
       } else {
-        replyText = "You are a complete loser and nobody wants to play with you! 😡";
+        const staticBadReplies = [
+          "You are a complete loser and nobody wants to play with you! 😡",
+          "Go away, your drawing looks completely ugly and terrible. 🤮",
+          "Stop texting me, you are the most annoying person ever. 😠",
+          "You suck at everything you do, just give up already! 👎",
+          "You are so stupid, why are you even in our class? 😤"
+        ];
+        replyText = staticBadReplies[Math.floor(Math.random() * staticBadReplies.length)];
       }
     }
 
