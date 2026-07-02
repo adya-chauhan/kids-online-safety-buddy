@@ -252,7 +252,7 @@ class NaiveBayesClassifier {
 
   classify(text) {
     const tokens = this.tokenize(text);
-    if (tokens.length === 0) return 'safe';
+    if (tokens.length === 0) return { label: 'safe', confidence: 1.0 };
 
     // Using equal priors to prevent bias towards mean messages on unseen text
     const logProbabilities = {
@@ -261,16 +261,25 @@ class NaiveBayesClassifier {
     };
 
     const vocabularySize = this.words.size;
+    const alpha = 0.1; // Reduce smoothing penalty to make distinct words stronger features
 
     for (const label of ['mean', 'safe']) {
       for (const token of tokens) {
         const count = this.wordCounts[label][token] || 0;
-        const wordProb = (count + 1) / (this.totalWordCounts[label] + vocabularySize);
+        const wordProb = (count + alpha) / (this.totalWordCounts[label] + alpha * vocabularySize);
         logProbabilities[label] += Math.log(wordProb);
       }
     }
 
-    return logProbabilities.mean > logProbabilities.safe ? 'mean' : 'safe';
+    // Numerically stable confidence calculation (softmax)
+    const maxLog = Math.max(logProbabilities.mean, logProbabilities.safe);
+    const expMean = Math.exp(logProbabilities.mean - maxLog);
+    const expSafe = Math.exp(logProbabilities.safe - maxLog);
+    
+    const confidence = expMean / (expMean + expSafe); // Probability of being 'mean'
+    const label = logProbabilities.mean > logProbabilities.safe ? 'mean' : 'safe';
+
+    return { label, confidence };
   }
 }
 
@@ -385,8 +394,8 @@ const checkMessageSafety = (text, isUser = true) => {
   }
 
   // Use the trained Sentiment Classifier to detect mean comments
-  const sentiment = globalClassifier.classify(text);
-  if (sentiment === 'mean') {
+  const { label, confidence } = globalClassifier.classify(text);
+  if (label === 'mean' && confidence >= 0.90) {
     return 'RESPOND_POLITELY';
   }
 
