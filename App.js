@@ -1681,30 +1681,27 @@ Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
                   style={[styles.naviSpeechBubble, animatedSpeechStyle]}
                 >
                   <Text style={styles.naviSpeechTitle}>🛡️ Navi Safety Tip:</Text>
-                  <Text style={styles.naviSpeechText}>
-                    How would you like to handle this message to stay safe and kind?
-                  </Text>
                   
                   {/* Safety Options */}
                   <TouchableOpacity 
                     style={styles.naviOptionBtn}
                     onPress={handleNaviIgnorePivot}
                   >
-                    <Text style={styles.naviOptionText}>🔀 Ignore and pivot</Text>
+                    <Text style={styles.naviOptionText}>🔀 Ignore & pivot</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
                     style={styles.naviOptionBtn}
                     onPress={handleNaviRespondPolitely}
                   >
-                    <Text style={styles.naviOptionText}>💬 Respond politely</Text>
+                    <Text style={styles.naviOptionText}>💬 Reply politely</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
                     style={[styles.naviOptionBtn, styles.naviOptionBtnAlert]}
                     onPress={handleNaviTellAdult}
                   >
-                    <Text style={[styles.naviOptionText, styles.naviOptionTextAlert]}>❤️ Alert a trusted adult</Text>
+                    <Text style={[styles.naviOptionText, styles.naviOptionTextAlert]}>❤️ Alert an adult</Text>
                   </TouchableOpacity>
                 </Animated.View>
 
@@ -2747,47 +2744,49 @@ const styles = StyleSheet.create({
   },
   naviSpeechBubble: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    width: 245,
+    borderRadius: 14,
+    padding: 10,
+    width: 200,
     marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   naviSpeechTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
     color: '#1E3A8A',
-    marginBottom: 4,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   naviSpeechText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#475569',
-    marginBottom: 8,
-    lineHeight: 18,
+    marginBottom: 6,
+    lineHeight: 16,
   },
   naviOptionBtn: {
     backgroundColor: '#EFF6FF',
     borderWidth: 1,
     borderColor: '#BFDBFE',
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    marginBottom: 6,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginBottom: 5,
   },
   naviOptionBtnAlert: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FCA5A5',
   },
   naviOptionText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#1D4ED8',
     fontWeight: '600',
+    textAlign: 'center',
   },
   naviOptionTextAlert: {
     color: '#DC2626',
