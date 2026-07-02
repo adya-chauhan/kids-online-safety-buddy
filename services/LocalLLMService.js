@@ -7,7 +7,7 @@ const PRIMARY_IP = '192.168.0.158';
 const OLLAMA_PORT = '11434';
 
 // Helper to make fetch requests to Ollama
-const callOllama = async (model, prompt, options = {}, timeout = 12000) => {
+const callOllama = async (model, prompt, options = {}, timeout = 25000) => {
   const requestOptions = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
