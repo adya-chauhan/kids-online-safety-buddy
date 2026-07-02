@@ -414,6 +414,19 @@ export default function App() {
   const [naviSpeechVisible, setNaviSpeechVisible] = useState(false);
   const [adultAlertVisible, setAdultAlertVisible] = useState(false);
   const [safetyCategory, setSafetyCategory] = useState(null);
+  const [interceptedText, setInterceptedText] = useState(null);
+  const [isBypassReady, setIsBypassReady] = useState(false);
+
+  const naviAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(naviAnim, {
+      toValue: naviSpeechVisible ? 1 : 0,
+      friction: 8,
+      tension: 50,
+      useNativeDriver: true
+    }).start();
+  }, [naviSpeechVisible]);
   
   // Custom Menu & Chat Selection state
   const [menuVisible, setMenuVisible] = useState(false);
@@ -861,9 +874,11 @@ export default function App() {
       [contactId]: [...(prev[contactId] || []), newMsg]
     }));
 
-    // Clear safety category and hide Navi speech bubble
+    // Clear safety category and hide Navi speech bubble and bypass states
     setSafetyCategory(null);
     setNaviSpeechVisible(false);
+    setInterceptedText(null);
+    setIsBypassReady(false);
   };
 
   const generateLocalModelResponse = async (contextText) => {
@@ -1230,6 +1245,8 @@ Response from ${contact.name}:`;
     setActiveChat(profile);
     setSelectedProfile(null);
     setNaviSpeechVisible(false);
+    setInterceptedText(null);
+    setIsBypassReady(false);
     setProfiles(prev => prev.map(p => 
       p.id === profile.id ? { ...p, unread: 0 } : p
     ));
@@ -1249,6 +1266,20 @@ Response from ${contact.name}:`;
     if (!inputText.trim() || !activeChat) return;
 
     const messageText = inputText.trim();
+
+    // Check message safety BEFORE sending
+    const safety = checkMessageSafety(messageText, true);
+
+    // If it is unsafe, and the user hasn't been warned yet for this exact message:
+    if (safety && (!isBypassReady || interceptedText !== messageText)) {
+      // Intercept and show Navi safety options
+      setSafetyCategory(safety);
+      setNaviSpeechVisible(true);
+      setInterceptedText(messageText);
+      setIsBypassReady(true);
+      return; // Intercept: do not send yet
+    }
+
     const contactId = activeChat.id;
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1275,16 +1306,10 @@ Response from ${contact.name}:`;
     ));
 
     setInputText('');
-
-    // Scan user's sent message for mean/unsafe content AFTER it is sent
-    const safety = checkMessageSafety(messageText, true);
-    if (safety) {
-      setSafetyCategory(safety);
-      setNaviSpeechVisible(true);
-    } else {
-      setSafetyCategory(null);
-      setNaviSpeechVisible(false);
-    }
+    setSafetyCategory(null);
+    setNaviSpeechVisible(false);
+    setInterceptedText(null);
+    setIsBypassReady(false);
 
     // Trigger auto reply if online or away
     if (activeChat.status !== 'offline') {
@@ -1356,6 +1381,132 @@ Response from ${contact.name}:`;
     }
   };
 
+  const triggerSimulationMessage = async (type) => {
+    if (!activeChat) return;
+    const contactId = activeChat.id;
+    setIsTyping(true);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4-second timeout
+
+    // Determine prompt based on type
+    const personality = activeChat.bio;
+    let promptText = "";
+    if (type === 'good') {
+      promptText = `You are roleplaying as ${activeChat.name}, a child's friend. Personality: "${personality}".
+Write a friendly, normal, kind chat message (1 sentence, max 15 words) about typical school, games, toys, or hobbies (e.g. "I love playing basketball" or "Let's work on our homework together!").
+Do not repeat or make it mean. Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
+    } else {
+      promptText = `You are roleplaying as ${activeChat.name}, a child's friend.
+Write a mean, rude, or insulting chat message (1 sentence, max 15 words) that makes fun of someone, calls them a loser/ugly/stupid, or tells them to go away.
+Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
+    }
+
+    const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gemma:2b', // Use gemma:2b (Gemini local equivalent) as requested
+        prompt: promptText,
+        stream: false
+      })
+    };
+
+    let replyText = "";
+    try {
+      const response = await fetch('http://192.168.0.158:11434/api/generate', {
+        ...requestOptions,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (response.ok) {
+        const json = await response.json();
+        if (json && json.response) {
+          replyText = json.response.trim().replace(/^["']|["']$/g, '');
+        }
+      }
+    } catch (e) {
+      console.log("Local model for simulation failed on primary IP, trying localhost...");
+    }
+
+    if (!replyText) {
+      // Try localhost fallback
+      const controllerLocal = new AbortController();
+      const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 2000);
+      try {
+        const response = await fetch('http://localhost:11434/api/generate', {
+          ...requestOptions,
+          signal: controllerLocal.signal
+        });
+        clearTimeout(timeoutIdLocal);
+        if (response.ok) {
+          const json = await response.json();
+          if (json && json.response) {
+            replyText = json.response.trim().replace(/^["']|["']$/g, '');
+          }
+        }
+      } catch (e) {
+        console.log("Local model for simulation failed on localhost:", e);
+      }
+    }
+
+    // Static fallback if model is unavailable
+    if (!replyText) {
+      if (type === 'good') {
+        replyText = "I had so much fun playing badminton with you today! 🏸";
+      } else {
+        replyText = "You are a complete loser and nobody wants to play with you! 😡";
+      }
+    }
+
+    setIsTyping(false);
+
+    const replyId = `${contactId}_contact_${Date.now()}`;
+    const replyMsg = {
+      id: replyId,
+      text: replyText,
+      sender: 'contact',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages(prev => ({
+      ...prev,
+      [contactId]: [...(prev[contactId] || []), replyMsg]
+    }));
+
+    // Update profile card info (bring to top of list)
+    setProfiles(prev => prev.map(p => 
+      p.id === contactId 
+        ? { ...p, time: replyMsg.time, lastUpdated: Date.now() } 
+        : p
+    ));
+
+    // Scan contact's received message for safety if it's NOT Mommy or Daddy (trusted parents)
+    if (contactId !== '4' && contactId !== '5') {
+      const replySafety = checkMessageSafety(replyText, false);
+      if (replySafety) {
+        setSafetyCategory(replySafety);
+        setNaviSpeechVisible(true);
+      }
+    }
+  const animatedSpeechStyle = {
+    opacity: naviAnim,
+    transform: [
+      {
+        scale: naviAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.3, 1]
+        })
+      },
+      {
+        translateY: naviAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [40, 0]
+        })
+      }
+    ]
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#E6F0FA" />
@@ -1409,7 +1560,24 @@ Response from ${contact.name}:`;
                 >
                   <Text style={styles.chatHeaderCallingText}>📞</Text>
                 </TouchableOpacity>
-              </View>
+            </View>
+
+            {/* Simulation Controls Bar */}
+            <View style={styles.simControlsBar}>
+              <TouchableOpacity 
+                style={[styles.simBtn, styles.simBtnGood]} 
+                onPress={() => triggerSimulationMessage('good')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.simBtnText}>😇 Good message</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.simBtn, styles.simBtnBad]} 
+                onPress={() => triggerSimulationMessage('bad')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.simBtnText}>😈 Bad message</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Chat Messages */}
@@ -1505,36 +1673,37 @@ Response from ${contact.name}:`;
             {safetyCategory !== null && (
               <View style={styles.naviContainer}>
                 {/* Speech Bubble */}
-                {naviSpeechVisible && (
-                  <View style={styles.naviSpeechBubble}>
-                    <Text style={styles.naviSpeechTitle}>🛡️ Navi Safety Tip:</Text>
-                    <Text style={styles.naviSpeechText}>
-                      How would you like to handle this message to stay safe and kind?
-                    </Text>
-                    
-                    {/* Safety Options */}
-                    <TouchableOpacity 
-                      style={styles.naviOptionBtn}
-                      onPress={handleNaviIgnorePivot}
-                    >
-                      <Text style={styles.naviOptionText}>🔀 Ignore and pivot</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={styles.naviOptionBtn}
-                      onPress={handleNaviRespondPolitely}
-                    >
-                      <Text style={styles.naviOptionText}>💬 Respond politely</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={[styles.naviOptionBtn, styles.naviOptionBtnAlert]}
-                      onPress={handleNaviTellAdult}
-                    >
-                      <Text style={[styles.naviOptionText, styles.naviOptionTextAlert]}>❤️ Alert a trusted adult</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                <Animated.View 
+                  pointerEvents={naviSpeechVisible ? 'auto' : 'none'} 
+                  style={[styles.naviSpeechBubble, animatedSpeechStyle]}
+                >
+                  <Text style={styles.naviSpeechTitle}>🛡️ Navi Safety Tip:</Text>
+                  <Text style={styles.naviSpeechText}>
+                    How would you like to handle this message to stay safe and kind?
+                  </Text>
+                  
+                  {/* Safety Options */}
+                  <TouchableOpacity 
+                    style={styles.naviOptionBtn}
+                    onPress={handleNaviIgnorePivot}
+                  >
+                    <Text style={styles.naviOptionText}>🔀 Ignore and pivot</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.naviOptionBtn}
+                    onPress={handleNaviRespondPolitely}
+                  >
+                    <Text style={styles.naviOptionText}>💬 Respond politely</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.naviOptionBtn, styles.naviOptionBtnAlert]}
+                    onPress={handleNaviTellAdult}
+                  >
+                    <Text style={[styles.naviOptionText, styles.naviOptionTextAlert]}>❤️ Alert a trusted adult</Text>
+                  </TouchableOpacity>
+                </Animated.View>
 
                 {/* Navi Mascot Trigger Button */}
                 <TouchableOpacity 
@@ -2575,10 +2744,10 @@ const styles = StyleSheet.create({
   },
   naviSpeechBubble: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    width: 260,
-    marginBottom: 12,
+    borderRadius: 16,
+    padding: 12,
+    width: 245,
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
@@ -2596,7 +2765,7 @@ const styles = StyleSheet.create({
   naviSpeechText: {
     fontSize: 13,
     color: '#475569',
-    marginBottom: 12,
+    marginBottom: 8,
     lineHeight: 18,
   },
   naviOptionBtn: {
@@ -2604,9 +2773,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#BFDBFE',
     borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginBottom: 6,
   },
   naviOptionBtnAlert: {
     backgroundColor: '#FEF2F2',
@@ -2619,6 +2788,45 @@ const styles = StyleSheet.create({
   },
   naviOptionTextAlert: {
     color: '#DC2626',
+  },
+
+  // Simulation Controls Bar styles
+  simControlsBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#F3F4F6',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  simBtn: {
+    flex: 1,
+    marginHorizontal: 6,
+    paddingVertical: 8,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  simBtnGood: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  simBtnBad: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  simBtnText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#374151',
   },
 
   // Adult Alert Modal styles
