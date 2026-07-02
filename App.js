@@ -14,7 +14,8 @@ import {
   KeyboardAvoidingView,
   Animated,
   PanResponder,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 
 const initialProfilesData = [
@@ -416,6 +417,9 @@ export default function App() {
   const [safetyCategory, setSafetyCategory] = useState(null);
   const [interceptedText, setInterceptedText] = useState(null);
   const [isBypassReady, setIsBypassReady] = useState(false);
+  const [politeSuggestions, setPoliteSuggestions] = useState([]);
+  const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
+  const [suggestionsVisible, setSuggestionsVisible] = useState(false);
 
   const naviAnim = useRef(new Animated.Value(0)).current;
 
@@ -1012,16 +1016,108 @@ Response from ${contact.name}:`;
     return fallbackText;
   };
 
-  const handleNaviRespondPolitely = async () => {
+  const generatePoliteSuggestions = async (rudeMessage) => {
+    setIsGeneratingSuggestions(true);
+    setPoliteSuggestions([]);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout
+
+    const promptText = `You are a child safety assistant named Navi. The child received this rude message: "${rudeMessage}".
+Generate exactly 3 short, distinct, polite, child-friendly reply options (max 15 words each) that set a kind boundary and keep the conversation friendly.
+Do not write explanations, quotes, or markdown. Output them as a numbered list:
+1. [First reply option]
+2. [Second reply option]
+3. [Third reply option]`;
+
+    const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gemma:2b',
+        prompt: promptText + `\nEnsure variety. Seed: ${Math.random()}`,
+        stream: false,
+        options: {
+          temperature: 0.9,
+          top_p: 0.9
+        }
+      })
+    };
+
+    let replyText = "";
+    try {
+      const response = await fetch('http://192.168.0.158:11434/api/generate', {
+        ...requestOptions,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (response.ok) {
+        const json = await response.json();
+        if (json && json.response) {
+          replyText = json.response.trim();
+        }
+      }
+    } catch (e) {
+      console.log("Local model for suggestions failed on primary IP, trying localhost...");
+    }
+
+    if (!replyText) {
+      const controllerLocal = new AbortController();
+      const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 10000);
+      try {
+        const response = await fetch('http://localhost:11434/api/generate', {
+          ...requestOptions,
+          signal: controllerLocal.signal
+        });
+        clearTimeout(timeoutIdLocal);
+        if (response.ok) {
+          const json = await response.json();
+          if (json && json.response) {
+            replyText = json.response.trim();
+          }
+        }
+      } catch (e) {
+        console.log("Local model for suggestions failed on localhost:", e);
+      }
+    }
+
+    setIsGeneratingSuggestions(false);
+
+    if (replyText) {
+      // Parse the numbered list
+      const lines = replyText.split('\n')
+        .map(line => line.replace(/^\d+\.\s*/, '').trim().replace(/^["']|["']$/g, ''))
+        .filter(line => line.length > 0 && !line.startsWith('Here are') && !line.includes('reply option'));
+      
+      const suggestions = lines.slice(0, 3);
+      if (suggestions.length === 3) {
+        setPoliteSuggestions(suggestions);
+        return;
+      }
+    }
+
+    // Static fallback options if generation fails
+    setPoliteSuggestions([
+      "Please don't call me names, let's keep our conversation friendly! 😊",
+      "I want to keep our chats kind and fun. Let's talk about something else! 👍",
+      "Let's be nice to each other. What games are you playing today? 🎮"
+    ]);
+  };
+
+  const handleSelectPoliteSuggestion = (suggestionText) => {
+    sendSafeFeedback(suggestionText);
+    setSuggestionsVisible(false);
+    setPoliteSuggestions([]);
+  };
+
+  const handleNaviRespondPolitely = () => {
+    if (!activeChat) return;
     const contactId = activeChat.id;
     const activeMessages = messages[contactId] || [];
     const lastMsg = activeMessages.length > 0 ? activeMessages[activeMessages.length - 1].text : "";
 
-    setSafetyCategory(null);
-    setNaviSpeechVisible(false);
-
-    const politeReply = await generateLocalModelResponse(lastMsg);
-    sendSafeFeedback(politeReply);
+    setSuggestionsVisible(true);
+    generatePoliteSuggestions(lastMsg);
   };
 
   const checkImageSafetyWithGemma = async (imageUri) => {
@@ -1299,6 +1395,8 @@ Response from ${contact.name}:`;
     setNaviSpeechVisible(false);
     setInterceptedText(null);
     setIsBypassReady(false);
+    setSuggestionsVisible(false);
+    setPoliteSuggestions([]);
     setProfiles(prev => prev.map(p => 
       p.id === profile.id ? { ...p, unread: 0 } : p
     ));
@@ -1750,29 +1848,61 @@ Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
                   pointerEvents={naviSpeechVisible ? 'auto' : 'none'} 
                   style={[styles.naviSpeechBubble, animatedSpeechStyle]}
                 >
-                  <Text style={styles.naviSpeechTitle}>🛡️ Navi Safety Tip:</Text>
-                  
-                  {/* Safety Options */}
-                  <TouchableOpacity 
-                    style={styles.naviOptionBtn}
-                    onPress={handleNaviIgnorePivot}
-                  >
-                    <Text style={styles.naviOptionText}>🔀 Ignore & pivot</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.naviOptionBtn}
-                    onPress={handleNaviRespondPolitely}
-                  >
-                    <Text style={styles.naviOptionText}>💬 Reply politely</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={[styles.naviOptionBtn, styles.naviOptionBtnAlert]}
-                    onPress={handleNaviTellAdult}
-                  >
-                    <Text style={[styles.naviOptionText, styles.naviOptionTextAlert]}>❤️ Alert an adult</Text>
-                  </TouchableOpacity>
+                  {suggestionsVisible ? (
+                    <>
+                      <Text style={styles.naviSpeechTitle}>💬 Choose a reply:</Text>
+                      {isGeneratingSuggestions ? (
+                        <ActivityIndicator size="small" color="#1D4ED8" style={{ marginVertical: 8 }} />
+                      ) : (
+                        <>
+                          {politeSuggestions.map((suggestion, idx) => (
+                            <TouchableOpacity 
+                              key={idx}
+                              style={styles.naviOptionBtn}
+                              onPress={() => handleSelectPoliteSuggestion(suggestion)}
+                            >
+                              <Text style={styles.naviOptionText}>{suggestion}</Text>
+                            </TouchableOpacity>
+                          ))}
+                          <TouchableOpacity 
+                            style={[styles.naviOptionBtn, { backgroundColor: '#F3F4F6', borderColor: '#D1D5DB', marginTop: 4 }]}
+                            onPress={() => {
+                              setSuggestionsVisible(false);
+                              setPoliteSuggestions([]);
+                            }}
+                          >
+                            <Text style={[styles.naviOptionText, { color: '#4B5563' }]}>⬅️ Back</Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.naviSpeechTitle}>🛡️ Navi Safety Tip:</Text>
+                      
+                      {/* Safety Options */}
+                      <TouchableOpacity 
+                        style={styles.naviOptionBtn}
+                        onPress={handleNaviIgnorePivot}
+                      >
+                        <Text style={styles.naviOptionText}>🔀 Ignore & pivot</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={styles.naviOptionBtn}
+                        onPress={handleNaviRespondPolitely}
+                      >
+                        <Text style={styles.naviOptionText}>💬 Reply politely</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={[styles.naviOptionBtn, styles.naviOptionBtnAlert]}
+                        onPress={handleNaviTellAdult}
+                      >
+                        <Text style={[styles.naviOptionText, styles.naviOptionTextAlert]}>❤️ Alert an adult</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </Animated.View>
 
                 {/* Navi Mascot Trigger Button */}
