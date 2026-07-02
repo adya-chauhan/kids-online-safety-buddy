@@ -883,7 +883,7 @@ export default function App() {
 
   const generateLocalModelResponse = async (contextText) => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout
 
     const promptText = `You are a child safety assistant named Navi. The child received this rude message: "${contextText}". The child wants to respond politely to keep the conversation kind. Write a very short, polite, child-friendly response (1 sentence, max 15 words) that sets a kind boundary. Do not repeat the rude message. Output ONLY the response text itself, no explanations, no quotes.`;
 
@@ -893,7 +893,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama3.2:3b',
+          model: 'gemma:2b',
           prompt: promptText,
           stream: false
         }),
@@ -913,13 +913,13 @@ export default function App() {
 
     // Fallback to localhost (simulators)
     const controllerLocal = new AbortController();
-    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 2000);
+    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 10000); // 10-second timeout
     try {
       const response = await fetch('http://localhost:11434/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llama3.2:3b',
+          model: 'gemma:2b',
           prompt: promptText,
           stream: false
         }),
@@ -943,7 +943,7 @@ export default function App() {
 
   const generateContactResponse = async (contact, chatHistory, fallbackText) => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout
 
     // Get last 6 messages for context
     const contextMsgs = chatHistory.slice(-6).map(m => {
@@ -967,7 +967,7 @@ Response from ${contact.name}:`;
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'llama3.2:3b',
+        model: 'gemma:2b',
         prompt: promptText,
         stream: false
       })
@@ -992,7 +992,7 @@ Response from ${contact.name}:`;
 
     // Fallback to localhost
     const controllerLocal = new AbortController();
-    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 2000);
+    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 10000); // 10-second timeout
     try {
       const response = await fetch('http://localhost:11434/api/generate', {
         ...requestOptions,
