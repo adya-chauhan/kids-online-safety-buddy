@@ -917,6 +917,77 @@ export default function App() {
     return "Thank you, but let's keep our conversation friendly and kind! 😊";
   };
 
+  const generateContactResponse = async (contact, chatHistory, fallbackText) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4-second timeout
+
+    // Get last 6 messages for context
+    const contextMsgs = chatHistory.slice(-6).map(m => {
+      const senderName = m.sender === 'user' ? 'Me' : contact.name;
+      return `${senderName}: ${m.text}`;
+    }).join('\n');
+
+    // Clean emojis from the role string to avoid prompting issues
+    const roleClean = contact.role.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, '').trim();
+
+    const promptText = `You are ${contact.name}, a child's ${roleClean}. Your personality/bio: "${contact.bio}".
+Respond to your friend's chat in a very natural, friendly, kid-friendly chat style. Stay on the topic they are talking about (e.g. pickleball, Lego, drawings, school).
+Keep your response short (1 to 2 sentences, maximum 25 words). Do not prefix with your name. Respond directly.
+
+Conversation history:
+${contextMsgs}
+
+Response from ${contact.name}:`;
+
+    const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama3.2:3b',
+        prompt: promptText,
+        stream: false
+      })
+    };
+
+    try {
+      // Try primary network IP
+      const response = await fetch('http://192.168.0.158:11434/api/generate', {
+        ...requestOptions,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (response.ok) {
+        const json = await response.json();
+        if (json && json.response) {
+          return json.response.trim().replace(/^["']|["']$/g, '');
+        }
+      }
+    } catch (e) {
+      console.log("Local model for contact response failed on primary IP, trying localhost...");
+    }
+
+    // Fallback to localhost
+    const controllerLocal = new AbortController();
+    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 2000);
+    try {
+      const response = await fetch('http://localhost:11434/api/generate', {
+        ...requestOptions,
+        signal: controllerLocal.signal
+      });
+      clearTimeout(timeoutIdLocal);
+      if (response.ok) {
+        const json = await response.json();
+        if (json && json.response) {
+          return json.response.trim().replace(/^["']|["']$/g, '');
+        }
+      }
+    } catch (e) {
+      console.log("Local model for contact response failed on localhost:", e);
+    }
+
+    return fallbackText;
+  };
+
   const handleNaviRespondPolitely = async () => {
     const contactId = activeChat.id;
     const activeMessages = messages[contactId] || [];
@@ -1210,7 +1281,7 @@ export default function App() {
     if (activeChat.status !== 'offline') {
       setIsTyping(true);
       
-      setTimeout(() => {
+      setTimeout(async () => {
         setIsTyping(false);
         
         let replyText = "";
@@ -1226,16 +1297,21 @@ export default function App() {
             replyText = `Please don't call me names. Let's keep our conversation kind and friendly! 😊`;
           }
         } else {
-          // If the child was kind, send a normal friendly reply from the sequential pool
+          // Get the default fallback text from the sequential pool
           const contactReplies = autoReplies[contactId] || ["Received! 👍"];
           const currentIdx = replyIndices[contactId] || 0;
-          replyText = contactReplies[currentIdx % contactReplies.length];
+          const fallbackText = contactReplies[currentIdx % contactReplies.length];
           
           // Increment reply index
           setReplyIndices(prev => ({
             ...prev,
             [contactId]: (prev[contactId] || 0) + 1
           }));
+
+          // Generate response using local AI model, falling back to static text if needed
+          const activeMessages = messages[contactId] || [];
+          const currentHistory = [...activeMessages, { text: messageText, sender: 'user' }];
+          replyText = await generateContactResponse(activeChat, currentHistory, fallbackText);
         }
 
         const replyId = `${contactId}_contact_${Date.now()}`;
