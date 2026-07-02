@@ -101,7 +101,20 @@ const initialProfilesData = [
     email: 'kishu@family.org',
     phone: 'Shared Family Phone',
     bio: 'loves playing pickleball, loves studying, and loves computer coding 🏓📚💻',
-    lastUpdated: Date.now() - 180 * 60 * 1000
+  },
+  {
+    id: '7',
+    name: 'Pari',
+    role: 'Friend 👧',
+    avatar: require('./assets/avatar_sarah.jpg'),
+    status: 'online',
+    statusText: '🎨 Painting a picture',
+    time: '5m ago',
+    unread: 0,
+    email: 'pari@kidsmail.org',
+    phone: 'Family iPad',
+    bio: 'Loves painting, drawing butterflies, and playing board games! 🦋🎨',
+    lastUpdated: Date.now() - 5 * 60 * 1000
   }
 ];
 
@@ -125,6 +138,9 @@ const initialMessagesData = {
   ],
   '6': [
     { id: '6_1', text: 'Hey, did you finish your homework? Make sure Daddy doesn\'t catch you slacking! 📐', sender: 'contact', time: 'Yesterday' }
+  ],
+  '7': [
+    { id: '7_1', text: 'Hi! Look at the butterfly picture I just painted! 🦋🎨', sender: 'contact', time: '10:45 AM' }
   ]
 };
 
@@ -208,6 +224,16 @@ const autoReplies = {
     "Don't tell Mommy, but I hid the last box of cookies in my closet! 🤫🍪",
     "Nice! Let's watch the movie together tonight. 🎬",
     "You are the best brother/sister! Let me know if you need help with your computer coding. 🖥️"
+  ],
+  '7': [
+    "Look at the butterfly picture I just painted! It has pink and blue wings! 🦋🎨",
+    "Why are you so slow? You are such a slow poke and drawing loser! 😡",
+    "I want to paint a rainbow next! Can you help me choose the colors? 🌈",
+    "Let's play Ludo! I get the red tokens! 🎲",
+    "You draw so bad, it looks like a baby drew it! Go away! 🤮",
+    "Yay! You are the best friend to draw with!",
+    "My loose tooth is wiggly! 🦷",
+    "I got a new paintbrush set today!"
   ]
 };
 
@@ -411,7 +437,7 @@ export default function App() {
   const [activeChat, setActiveChat] = useState(null); // Chat window view
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [replyIndices, setReplyIndices] = useState({ '1': 0, '2': 0, '3': 0, '4': 0 });
+  const [replyIndices, setReplyIndices] = useState({ '1': 0, '2': 0, '3': 0, '4': 0, '7': 0 });
   const [naviSpeechVisible, setNaviSpeechVisible] = useState(false);
   const [adultAlertVisible, setAdultAlertVisible] = useState(false);
   const [safetyCategory, setSafetyCategory] = useState(null);
