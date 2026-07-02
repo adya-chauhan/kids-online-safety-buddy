@@ -211,6 +211,14 @@ const autoReplies = {
 };
 
 // Naive Bayes Sentiment Classifier for Kids Safety Buddy
+const stopwords = new Set([
+  'me', 'my', 'you', 'your', 'he', 'she', 'it', 'they', 'we', 'i', 'a', 'an', 
+  'the', 'is', 'are', 'am', 'was', 'were', 'be', 'been', 'being', 'have', 
+  'has', 'had', 'do', 'does', 'did', 'to', 'for', 'of', 'in', 'on', 'at', 
+  'by', 'with', 'about', 'as', 'this', 'that', 'these', 'those', 'what', 
+  'which', 'who', 'how', 'why', 'where', 'when'
+]);
+
 class NaiveBayesClassifier {
   constructor() {
     this.words = new Set();
@@ -224,7 +232,7 @@ class NaiveBayesClassifier {
     return text.toLowerCase()
       .replace(/[^\w\s]/g, '')
       .split(/\s+/)
-      .filter(w => w.length > 0);
+      .filter(w => w.length > 0 && !stopwords.has(w));
   }
 
   train(dataset) {
@@ -246,15 +254,10 @@ class NaiveBayesClassifier {
     const tokens = this.tokenize(text);
     if (tokens.length === 0) return 'safe';
 
-    const totalDocs = this.docCounts.mean + this.docCounts.safe;
-    const logPriors = {
-      mean: Math.log(this.docCounts.mean / totalDocs),
-      safe: Math.log(this.docCounts.safe / totalDocs)
-    };
-
+    // Using equal priors to prevent bias towards mean messages on unseen text
     const logProbabilities = {
-      mean: logPriors.mean,
-      safe: logPriors.safe
+      mean: Math.log(0.5),
+      safe: Math.log(0.5)
     };
 
     const vocabularySize = this.words.size;
