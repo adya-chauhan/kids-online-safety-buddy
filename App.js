@@ -1607,29 +1607,7 @@ Response from ${contact.name}:`;
                     />
                   </View>
 
-                  {/* Horizontal Filter Chips (Five Ovals next to each other) */}
-                  <ScrollView 
-                    horizontal={true} 
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.filterRow}
-                    contentContainerStyle={styles.filterContent}
-                  >
-                    <TouchableOpacity style={[styles.filterChip, styles.filterChipActive]} onPress={() => alert("Showing All chats")}>
-                      <Text style={styles.filterChipTextActive}>All</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Unread chats")}>
-                      <Text style={styles.filterChipText}>Unread</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Friends")}>
-                      <Text style={styles.filterChipText}>Friends</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Family")}>
-                      <Text style={styles.filterChipText}>Family</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.filterChip} onPress={() => alert("Showing Groups")}>
-                      <Text style={styles.filterChipText}>Groups</Text>
-                    </TouchableOpacity>
-                  </ScrollView>
+
 
                   {/* Archived Row */}
                   <TouchableOpacity 
