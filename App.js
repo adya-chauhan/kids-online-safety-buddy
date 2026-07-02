@@ -1845,20 +1845,6 @@ Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
                       onChangeText={setSearchQuery}
                     />
                   </View>
-
-
-
-                  {/* Archived Row */}
-                  <TouchableOpacity 
-                    style={styles.archivedRow} 
-                    onPress={() => alert("Open archived chats... 📁")}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.archivedLeft}>
-                      <Text style={styles.archivedText}>Archived</Text>
-                    </View>
-                    <Text style={styles.archivedCount}>0</Text>
-                  </TouchableOpacity>
                 </View>
 
                 {/* Profiles List */}
