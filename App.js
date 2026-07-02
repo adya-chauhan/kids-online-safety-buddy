@@ -1167,8 +1167,60 @@ Response from ${contact.name}:`;
   };
 
   const handleNaviTellAdult = () => {
+    if (!activeChat) return;
+    const contactId = activeChat.id;
+    const activeMessages = messages[contactId] || [];
+    const lastMsgText = activeMessages.length > 0 ? activeMessages[activeMessages.length - 1].text : "";
+
+    setSafetyCategory(null);
     setNaviSpeechVisible(false);
-    setAdultAlertVisible(true);
+
+    // Construct the automatic report text
+    const reportText = `🚨 [Navi Safety Report] ${activeChat.name} sent me a mean message: "${lastMsgText}". Navi helped me handle this safely.`;
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Send the report automatically to Mommy (id: '4') and Daddy (id: '5')
+    setMessages(prev => {
+      const updated = { ...prev };
+      
+      // Send to Mommy
+      const mommyMsgId = `mommy_report_${Date.now()}`;
+      updated['4'] = [...(updated['4'] || []), {
+        id: mommyMsgId,
+        text: reportText,
+        sender: 'user',
+        time: timeStr
+      }];
+
+      // Send to Daddy
+      const daddyMsgId = `daddy_report_${Date.now()}`;
+      updated['5'] = [...(updated['5'] || []), {
+        id: daddyMsgId,
+        text: reportText,
+        sender: 'user',
+        time: timeStr
+      }];
+
+      return updated;
+    });
+
+    // Bring Mommy and Daddy profiles to top
+    setProfiles(prev => prev.map(p => 
+      (p.id === '4' || p.id === '5')
+        ? { ...p, time: timeStr, lastUpdated: Date.now() } 
+        : p
+    ));
+
+    // Show a success confirmation alert
+    alert(`Navi has automatically reported this to Mommy and Daddy! 🛡️`);
+
+    // Open Mommy's chat screen so the child sees the report was sent and can chat
+    const mommyProfile = profiles.find(p => p.id === '4');
+    if (mommyProfile) {
+      openChat(mommyProfile);
+    }
   };
 
   const messageMommyAction = () => {
