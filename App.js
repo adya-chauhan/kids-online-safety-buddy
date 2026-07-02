@@ -1489,6 +1489,8 @@ Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
         setNaviSpeechVisible(true);
       }
     }
+  };
+
   const animatedSpeechStyle = {
     opacity: naviAnim,
     transform: [
