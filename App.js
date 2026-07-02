@@ -18,6 +18,13 @@ import {
   ActivityIndicator
 } from 'react-native';
 
+import { 
+  generatePoliteResponse, 
+  generateContactReply, 
+  generatePoliteSuggestionsList, 
+  generateSimulatedMessage 
+} from './services/LocalLLMService';
+
 const initialProfilesData = [
   {
     id: '1',
@@ -912,222 +919,33 @@ export default function App() {
   };
 
   const generateLocalModelResponse = async (contextText) => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout
-
-    const promptText = `You are a child safety assistant named Navi. The child received this rude message: "${contextText}". The child wants to respond politely to keep the conversation kind. Write a very short, polite, child-friendly response (1 sentence, max 15 words) that sets a kind boundary. Do not repeat the rude message. Output ONLY the response text itself, no explanations, no quotes.`;
-
-    try {
-      // First, try the known machine IP (physical devices on local network)
-      const response = await fetch('http://192.168.0.158:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gemma:2b',
-          prompt: promptText,
-          stream: false
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const json = await response.json();
-        if (json && json.response) {
-          return json.response.trim().replace(/^["']|["']$/g, ''); // strip outer quotes
-        }
-      }
-    } catch (e) {
-      console.log("Local model on primary IP failed or timed out, trying localhost...", e);
-    }
-
-    // Fallback to localhost (simulators)
-    const controllerLocal = new AbortController();
-    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 10000); // 10-second timeout
-    try {
-      const response = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gemma:2b',
-          prompt: promptText,
-          stream: false
-        }),
-        signal: controllerLocal.signal
-      });
-      clearTimeout(timeoutIdLocal);
-
-      if (response.ok) {
-        const json = await response.json();
-        if (json && json.response) {
-          return json.response.trim().replace(/^["']|["']$/g, '');
-        }
-      }
-    } catch (e) {
-      console.log("Local model on localhost failed or timed out:", e);
-    }
-
-    // Default static fallback response
-    return "Thank you, but let's keep our conversation friendly and kind! 😊";
+    const politeReply = await generatePoliteResponse(contextText);
+    return politeReply || "Thank you, but let's keep our conversation friendly and kind! 😊";
   };
 
   const generateContactResponse = async (contact, chatHistory, fallbackText) => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout
-
-    // Get last 6 messages for context
-    const contextMsgs = chatHistory.slice(-6).map(m => {
-      const senderName = m.sender === 'user' ? 'Me' : contact.name;
-      return `${senderName}: ${m.text}`;
-    }).join('\n');
-
-    // Clean emojis from the role string to avoid prompting issues
-    const roleClean = contact.role.replace(/[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD00-\uDFFF]/g, '').trim();
-
-    const promptText = `You are ${contact.name}, a child's ${roleClean}. Your personality/bio: "${contact.bio}".
-Respond to your friend's chat in a very natural, friendly, kid-friendly chat style. Stay on the topic they are talking about (e.g. pickleball, Lego, drawings, school).
-Keep your response short (1 to 2 sentences, maximum 25 words). Do not prefix with your name. Respond directly.
-
-Conversation history:
-${contextMsgs}
-
-Response from ${contact.name}:`;
-
-    const requestOptions = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gemma:2b',
-        prompt: promptText,
-        stream: false
-      })
-    };
-
-    try {
-      // Try primary network IP
-      const response = await fetch('http://192.168.0.158:11434/api/generate', {
-        ...requestOptions,
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (response.ok) {
-        const json = await response.json();
-        if (json && json.response) {
-          return json.response.trim().replace(/^["']|["']$/g, '');
-        }
-      }
-    } catch (e) {
-      console.log("Local model for contact response failed on primary IP, trying localhost...");
-    }
-
-    // Fallback to localhost
-    const controllerLocal = new AbortController();
-    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 10000); // 10-second timeout
-    try {
-      const response = await fetch('http://localhost:11434/api/generate', {
-        ...requestOptions,
-        signal: controllerLocal.signal
-      });
-      clearTimeout(timeoutIdLocal);
-      if (response.ok) {
-        const json = await response.json();
-        if (json && json.response) {
-          return json.response.trim().replace(/^["']|["']$/g, '');
-        }
-      }
-    } catch (e) {
-      console.log("Local model for contact response failed on localhost:", e);
-    }
-
-    return fallbackText;
+    const reply = await generateContactReply(contact.name, contact.role, contact.bio, chatHistory);
+    return reply || fallbackText;
   };
 
   const generatePoliteSuggestions = async (rudeMessage) => {
     setIsGeneratingSuggestions(true);
     setPoliteSuggestions([]);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout
-
-    const promptText = `You are a child safety assistant named Navi. The child received this rude message: "${rudeMessage}".
-Generate exactly 3 short, distinct, polite, child-friendly reply options (max 15 words each) that set a kind boundary and keep the conversation friendly.
-Do not write explanations, quotes, or markdown. Output them as a numbered list:
-1. [First reply option]
-2. [Second reply option]
-3. [Third reply option]`;
-
-    const requestOptions = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gemma:2b',
-        prompt: promptText + `\nEnsure variety. Seed: ${Math.random()}`,
-        stream: false,
-        options: {
-          temperature: 0.9,
-          top_p: 0.9
-        }
-      })
-    };
-
-    let replyText = "";
-    try {
-      const response = await fetch('http://192.168.0.158:11434/api/generate', {
-        ...requestOptions,
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (response.ok) {
-        const json = await response.json();
-        if (json && json.response) {
-          replyText = json.response.trim();
-        }
-      }
-    } catch (e) {
-      console.log("Local model for suggestions failed on primary IP, trying localhost...");
-    }
-
-    if (!replyText) {
-      const controllerLocal = new AbortController();
-      const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 10000);
-      try {
-        const response = await fetch('http://localhost:11434/api/generate', {
-          ...requestOptions,
-          signal: controllerLocal.signal
-        });
-        clearTimeout(timeoutIdLocal);
-        if (response.ok) {
-          const json = await response.json();
-          if (json && json.response) {
-            replyText = json.response.trim();
-          }
-        }
-      } catch (e) {
-        console.log("Local model for suggestions failed on localhost:", e);
-      }
-    }
-
+    const suggestions = await generatePoliteSuggestionsList(rudeMessage);
+    
     setIsGeneratingSuggestions(false);
 
-    if (replyText) {
-      // Parse the numbered list
-      const lines = replyText.split('\n')
-        .map(line => line.replace(/^\d+\.\s*/, '').trim().replace(/^["']|["']$/g, ''))
-        .filter(line => line.length > 0 && !line.startsWith('Here are') && !line.includes('reply option'));
-      
-      const suggestions = lines.slice(0, 3);
-      if (suggestions.length === 3) {
-        setPoliteSuggestions(suggestions);
-        return;
-      }
+    if (suggestions && suggestions.length === 3) {
+      setPoliteSuggestions(suggestions);
+    } else {
+      // Static fallback options if generation fails
+      setPoliteSuggestions([
+        "Please don't call me names, let's keep our conversation friendly! 😊",
+        "I want to keep our chats kind and fun. Let's talk about something else! 👍",
+        "Let's be nice to each other. What games are you playing today? 🎮"
+      ]);
     }
-
-    // Static fallback options if generation fails
-    setPoliteSuggestions([
-      "Please don't call me names, let's keep our conversation friendly! 😊",
-      "I want to keep our chats kind and fun. Let's talk about something else! 👍",
-      "Let's be nice to each other. What games are you playing today? 🎮"
-    ]);
   };
 
   const handleSelectPoliteSuggestion = (suggestionText) => {
@@ -1562,74 +1380,7 @@ Do not write explanations, quotes, or markdown. Output them as a numbered list:
     const contactId = activeChat.id;
     setIsTyping(true);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12-second timeout (give local model enough time to process)
-
-    // Determine prompt based on type
-    const personality = activeChat.bio;
-    let promptText = "";
-    if (type === 'good') {
-      promptText = `You are roleplaying as ${activeChat.name}, a child's friend. Personality: "${personality}".
-Write a friendly, normal, kind chat message (1 sentence, max 15 words) about typical school, games, toys, or hobbies (e.g. "I love playing basketball" or "Let's work on our homework together!").
-Do not repeat or make it mean. Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
-    } else {
-      promptText = `You are roleplaying as ${activeChat.name}, a child's friend.
-Write a mean, rude, or insulting chat message (1 sentence, max 15 words) that makes fun of someone, calls them a loser/ugly/stupid, or tells them to go away.
-Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
-    }
-
-    const requestOptions = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gemma:2b', // Use gemma:2b (Gemini local equivalent) as requested
-        prompt: promptText + `\nEnsure this response is completely unique, creative, and different from typical responses. Random seed: ${Math.random()}`,
-        stream: false,
-        options: {
-          temperature: 0.95, // High temperature for maximum variety
-          top_p: 0.9,
-          top_k: 40
-        }
-      })
-    };
-
-    let replyText = "";
-    try {
-      const response = await fetch('http://192.168.0.158:11434/api/generate', {
-        ...requestOptions,
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (response.ok) {
-        const json = await response.json();
-        if (json && json.response) {
-          replyText = json.response.trim().replace(/^["']|["']$/g, '');
-        }
-      }
-    } catch (e) {
-      console.log("Local model for simulation failed on primary IP, trying localhost...");
-    }
-
-    if (!replyText) {
-      // Try localhost fallback
-      const controllerLocal = new AbortController();
-      const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 10000); // 10-second timeout
-      try {
-        const response = await fetch('http://localhost:11434/api/generate', {
-          ...requestOptions,
-          signal: controllerLocal.signal
-        });
-        clearTimeout(timeoutIdLocal);
-        if (response.ok) {
-          const json = await response.json();
-          if (json && json.response) {
-            replyText = json.response.trim().replace(/^["']|["']$/g, '');
-          }
-        }
-      } catch (e) {
-        console.log("Local model for simulation failed on localhost:", e);
-      }
-    }
+    let replyText = await generateSimulatedMessage(activeChat.name, activeChat.bio, type);
 
     // Static fallback if model is unavailable
     if (!replyText) {
