@@ -112,7 +112,7 @@ const initialProfilesData = [
   {
     id: '7',
     name: 'Pari',
-    role: 'Friend 👧',
+    role: 'me',
     avatar: require('./assets/avatar_pari_11yo.jpg'),
     status: 'online',
     statusText: '🎨 Painting a picture',
