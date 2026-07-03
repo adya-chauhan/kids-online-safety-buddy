@@ -386,7 +386,12 @@ const trainingDataset = [
   { text: "happy birthday dear friend have a great day", label: "safe" },
   { text: "let's play roblox today after class finishes", label: "safe" },
   { text: "good morning how did you sleep last night", label: "safe" },
-  { text: "I will bring my big lego box tomorrow morning", label: "safe" }
+  { text: "I will bring my big lego box tomorrow morning", label: "safe" },
+  { text: "I love computer coding and programming", label: "safe" },
+  { text: "let's learn coding together it is fun", label: "safe" },
+  { text: "I built a cool game with coding", label: "safe" },
+  { text: "coding is my favorite hobby", label: "safe" },
+  { text: "computer coding is a great way to make toys", label: "safe" }
 ];
 
 const globalClassifier = new NaiveBayesClassifier();
