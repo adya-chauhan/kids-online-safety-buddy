@@ -90,7 +90,7 @@ Response from ${contactName}:`;
 // 3. Generate three polite suggestions
 export const generatePoliteSuggestionsList = async (rudeText) => {
   const prompt = `You are a child safety assistant named Navi. The child received this rude message: "${rudeText}".
-Generate exactly 3 very short, distinct, polite, child-friendly reply options (max 8 words each) that set a kind boundary and keep the conversation friendly.
+Generate exactly 3 short, distinct, polite, child-friendly reply options (max 15 words each) that set a kind boundary and keep the conversation friendly.
 Do not write explanations, quotes, or markdown. Output them as a numbered list:
 1. [First reply option]
 2. [Second reply option]
