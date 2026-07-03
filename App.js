@@ -2215,8 +2215,10 @@ export default function App() {
                 activeOpacity={0.7}
               >
                 <View style={styles.iconMessageWrapper}>
-                  <Text style={styles.menuBubbleIcon}>💬</Text>
-                  <Text style={styles.menuBubbleCheck}>✓</Text>
+                  <View style={styles.customBubble}>
+                    <View style={styles.customBubbleTail} />
+                    <Text style={styles.customBubbleCheckMark}>✓</Text>
+                  </View>
                 </View>
                 <Text style={styles.menuItemText}>Read all</Text>
               </TouchableOpacity>
@@ -3217,6 +3219,35 @@ const styles = StyleSheet.create({
     color: '#10B981',
     top: 7,
     left: 7,
+  },
+  customBubble: {
+    width: 18,
+    height: 14,
+    backgroundColor: '#3B82F6',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginTop: -2,
+  },
+  customBubbleTail: {
+    position: 'absolute',
+    bottom: -3,
+    left: 2,
+    width: 0,
+    height: 0,
+    borderTopWidth: 4,
+    borderTopColor: '#3B82F6',
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent',
+    borderRightWidth: 3,
+    borderRightColor: 'transparent',
+  },
+  customBubbleCheckMark: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+    marginTop: -1,
   },
   // Select mode card selection
   profileCardSelected: {
