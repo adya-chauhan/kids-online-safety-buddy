@@ -1023,7 +1023,7 @@ export default function App() {
 
     // 3. Local vision LLM (Gemma 3 4B via Ollama)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45-second timeout (vision model loading on CPU is slow)
 
     try {
       const response = await fetch('http://192.168.0.158:11434/api/generate', {
@@ -1031,7 +1031,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'gemma3:4b',
-          prompt: "Does this image contain cyberbullying, insults, rude memes, or mean content? Answer with exactly one word: SAFE or UNSAFE.",
+          prompt: "Read any text written inside this image. If the image contains text, check if that text is rude, insulting, mean, or constitutes cyberbullying. Does the visual content or the text inside the image contain cyberbullying, insults, rude memes, or mean content? Reply with exactly one word: UNSAFE if it is mean, or SAFE if it is safe.",
           images: [base64Data],
           stream: false
         }),
@@ -1043,7 +1043,7 @@ export default function App() {
         const json = await response.json();
         const text = (json.response || "").toUpperCase();
         console.log("Gemma 3 vision scan result text (primary):", text);
-        if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY")) {
+        if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY") || text.includes("STUPID")) {
           return 'RESPOND_POLITELY';
         }
       }
@@ -1053,14 +1053,14 @@ export default function App() {
 
     // Fallback to localhost (for simulator)
     const controllerLocal = new AbortController();
-    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 15000); // 15-second timeout
+    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 35000); // 35-second timeout
     try {
       const response = await fetch('http://localhost:11434/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'gemma3:4b',
-          prompt: "Does this image contain cyberbullying, insults, rude memes, or mean content? Answer with exactly one word: SAFE or UNSAFE.",
+          prompt: "Read any text written inside this image. If the image contains text, check if that text is rude, insulting, mean, or constitutes cyberbullying. Does the visual content or the text inside the image contain cyberbullying, insults, rude memes, or mean content? Reply with exactly one word: UNSAFE if it is mean, or SAFE if it is safe.",
           images: [base64Data],
           stream: false
         }),
@@ -1072,7 +1072,7 @@ export default function App() {
         const json = await response.json();
         const text = (json.response || "").toUpperCase();
         console.log("Gemma 3 vision scan result text (localhost):", text);
-        if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY")) {
+        if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY") || text.includes("STUPID")) {
           return 'RESPOND_POLITELY';
         }
       }
