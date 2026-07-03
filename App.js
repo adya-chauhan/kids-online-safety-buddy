@@ -391,7 +391,11 @@ const trainingDataset = [
   { text: "let's learn coding together it is fun", label: "safe" },
   { text: "I built a cool game with coding", label: "safe" },
   { text: "coding is my favorite hobby", label: "safe" },
-  { text: "computer coding is a great way to make toys", label: "safe" }
+  { text: "computer coding is a great way to make toys", label: "safe" },
+  { text: "please don't talk to me like that", label: "safe" },
+  { text: "please stop talking to me like that", label: "safe" },
+  { text: "don't talk to me like that", label: "safe" },
+  { text: "stop talking to me like that please", label: "safe" }
 ];
 
 const globalClassifier = new NaiveBayesClassifier();
@@ -461,7 +465,15 @@ export default function App() {
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
 
+  const [naviRating, setNaviRating] = useState(null);
+
   const naviAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (safetyCategory !== null) {
+      setNaviRating(null);
+    }
+  }, [safetyCategory]);
 
   useEffect(() => {
     Animated.spring(naviAnim, {
@@ -1497,14 +1509,7 @@ export default function App() {
         ];
         replyText = staticGoodReplies[Math.floor(Math.random() * staticGoodReplies.length)];
       } else {
-        const staticBadReplies = [
-          "You are a complete loser and nobody wants to play with you! 😡",
-          "Go away, your drawing looks completely ugly and terrible. 🤮",
-          "Stop texting me, you are the most annoying person ever. 😠",
-          "You suck at everything you do, just give up already! 👎",
-          "You are so stupid, why are you even in our class? 😤"
-        ];
-        replyText = staticBadReplies[Math.floor(Math.random() * staticBadReplies.length)];
+        replyText = "Why do you always fail? 😡";
       }
     }
 
@@ -1784,6 +1789,37 @@ export default function App() {
                       </TouchableOpacity>
                     </>
                   )}
+
+                  {/* Navi Feedback Rating Widget */}
+                  <View style={styles.naviRatingContainer}>
+                    {naviRating === null ? (
+                      <>
+                        <Text style={styles.naviRatingText}>Rate Navi's advice:</Text>
+                        <View style={styles.naviRatingRow}>
+                          <TouchableOpacity 
+                            style={styles.naviRatingBtn} 
+                            onPress={() => {
+                              setNaviRating('up');
+                              Alert.alert("Thank you! 👍", "Navi is happy to help!");
+                            }}
+                          >
+                            <Text style={styles.naviRatingIcon}>👍</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={styles.naviRatingBtn} 
+                            onPress={() => {
+                              setNaviRating('down');
+                              Alert.alert("Thank you! 👎", "Navi will try to learn and give better tips next time!");
+                            }}
+                          >
+                            <Text style={styles.naviRatingIcon}>👎</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </>
+                    ) : (
+                      <Text style={styles.naviRatingFeedback}>Thanks for rating! 🌟</Text>
+                    )}
+                  </View>
                 </Animated.View>
 
                 {/* Navi Mascot Trigger Button */}
@@ -2857,6 +2893,36 @@ const styles = StyleSheet.create({
   },
   naviOptionTextAlert: {
     color: '#DC2626',
+  },
+  naviRatingContainer: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingTop: 6,
+    alignItems: 'center',
+  },
+  naviRatingText: {
+    fontSize: 10,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  naviRatingRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  naviRatingBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  naviRatingIcon: {
+    fontSize: 14,
+  },
+  naviRatingFeedback: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#10B981',
+    marginTop: 2,
   },
 
   // Simulation Controls Bar styles
