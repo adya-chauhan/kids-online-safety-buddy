@@ -1885,7 +1885,7 @@ export default function App() {
                       onPress={() => setMenuVisible(prev => !prev)}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.threeDotsText}>•••</Text>
+                      <Text style={styles.threeDotsText}>🗨️</Text>
                     </TouchableOpacity>
                     
                     {/* Top Right Action Circles */}
@@ -3129,10 +3129,7 @@ const styles = StyleSheet.create({
   },
   threeDotsText: {
     fontSize: 16,
-    fontWeight: '900',
     color: '#64748B',
-    letterSpacing: -1,
-    marginTop: -2,
   },
   menuOverlay: {
     position: 'absolute',
