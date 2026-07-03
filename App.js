@@ -562,7 +562,7 @@ export default function App() {
           onPress={() => setActiveTab('chats')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'chats' && styles.tabIconActive]}>💬</Text>
+          <Text style={[styles.tabIcon, activeTab === 'chats' && styles.tabIconActive]}>🗨️</Text>
           <Text style={[styles.tabLabel, activeTab === 'chats' && styles.tabLabelActive]} numberOfLines={1}>Chats</Text>
         </TouchableOpacity>
 
@@ -2182,7 +2182,7 @@ export default function App() {
                 activeOpacity={0.7}
               >
                 <View style={styles.iconMessageWrapper}>
-                  <Text style={styles.menuBubbleIcon}>💬</Text>
+                  <Text style={styles.menuBubbleIcon}>🗨️</Text>
                   <Text style={styles.menuBubbleCheck}>✓</Text>
                 </View>
                 <Text style={styles.menuItemText}>Read all</Text>
