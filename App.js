@@ -1009,16 +1009,16 @@ export default function App() {
       return null;
     }
 
-    // 3. Local vision LLM (Llava via Ollama)
+    // 3. Local vision LLM (Gemma 3 4B via Ollama)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout (vision models take longer)
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout
 
     try {
       const response = await fetch('http://192.168.0.158:11434/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llava',
+          model: 'gemma3:4b',
           prompt: "Does this image contain cyberbullying, insults, rude memes, or mean content? Answer with exactly one word: SAFE or UNSAFE.",
           images: [base64Data],
           stream: false
@@ -1030,13 +1030,13 @@ export default function App() {
       if (response.ok) {
         const json = await response.json();
         const text = (json.response || "").toUpperCase();
-        console.log("Llava vision scan result text (primary):", text);
+        console.log("Gemma 3 vision scan result text (primary):", text);
         if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY")) {
           return 'RESPOND_POLITELY';
         }
       }
     } catch (e) {
-      console.log("Llava vision safety scan failed or timed out on primary IP, trying localhost...", e);
+      console.log("Gemma 3 vision safety scan failed or timed out on primary IP, trying localhost...", e);
     }
 
     // Fallback to localhost (for simulator)
@@ -1047,7 +1047,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llava',
+          model: 'gemma3:4b',
           prompt: "Does this image contain cyberbullying, insults, rude memes, or mean content? Answer with exactly one word: SAFE or UNSAFE.",
           images: [base64Data],
           stream: false
@@ -1059,13 +1059,13 @@ export default function App() {
       if (response.ok) {
         const json = await response.json();
         const text = (json.response || "").toUpperCase();
-        console.log("Llava vision scan result text (localhost):", text);
+        console.log("Gemma 3 vision scan result text (localhost):", text);
         if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY")) {
           return 'RESPOND_POLITELY';
         }
       }
     } catch (e) {
-      console.log("Llava vision safety scan failed or timed out on localhost:", e);
+      console.log("Gemma 3 vision safety scan failed or timed out on localhost:", e);
     }
 
     return null;
