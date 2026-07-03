@@ -18,6 +18,8 @@ import {
   ActivityIndicator
 } from 'react-native';
 
+import * as ImagePicker from 'expo-image-picker';
+
 import { 
   generatePoliteResponse, 
   generateContactReply, 
@@ -964,24 +966,56 @@ export default function App() {
     generatePoliteSuggestions(lastMsg);
   };
 
+  const convertUrlToBase64 = async (url) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      console.log("Failed to convert URL to base64:", e);
+      return null;
+    }
+  };
+
   const checkImageSafetyWithGemma = async (imageUri) => {
     // 1. Check offline fallback first (reliable offline testing)
     if (imageUri && imageUri.includes("mean_meme_test")) {
       return 'RESPOND_POLITELY'; // Flagged as rude/mean image
     }
 
-    // 2. Local vision LLM (PaliGemma / Llava via Ollama)
+    // 2. Convert imageUri to clean base64 data for local vision LLM
+    let base64Data = "";
+    if (imageUri.startsWith("data:image/")) {
+      base64Data = imageUri.split(",")[1];
+    } else if (imageUri.startsWith("http")) {
+      base64Data = await convertUrlToBase64(imageUri);
+    }
+
+    if (!base64Data) {
+      console.log("No base64 data available for Ollama vision scan.");
+      return null;
+    }
+
+    // 3. Local vision LLM (Llava via Ollama)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20-second timeout (vision models take longer)
 
     try {
       const response = await fetch('http://192.168.0.158:11434/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'llava', // or paligemma
-          prompt: "Analyze this image. Does it contain cyberbullying, insults, rude memes, or mean content? Reply with exactly one word: SAFE or UNSAFE.",
-          images: [imageUri], // public URL or base64
+          model: 'llava',
+          prompt: "Does this image contain cyberbullying, insults, rude memes, or mean content? Answer with exactly one word: SAFE or UNSAFE.",
+          images: [base64Data],
           stream: false
         }),
         signal: controller.signal
@@ -991,30 +1025,95 @@ export default function App() {
       if (response.ok) {
         const json = await response.json();
         const text = (json.response || "").toUpperCase();
-        if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN")) {
+        console.log("Llava vision scan result text (primary):", text);
+        if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY")) {
           return 'RESPOND_POLITELY';
         }
       }
     } catch (e) {
-      console.log("Gemma vision safety scan failed or timed out:", e);
+      console.log("Llava vision safety scan failed or timed out on primary IP, trying localhost...", e);
     }
+
+    // Fallback to localhost (for simulator)
+    const controllerLocal = new AbortController();
+    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 15000); // 15-second timeout
+    try {
+      const response = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llava',
+          prompt: "Does this image contain cyberbullying, insults, rude memes, or mean content? Answer with exactly one word: SAFE or UNSAFE.",
+          images: [base64Data],
+          stream: false
+        }),
+        signal: controllerLocal.signal
+      });
+      clearTimeout(timeoutIdLocal);
+
+      if (response.ok) {
+        const json = await response.json();
+        const text = (json.response || "").toUpperCase();
+        console.log("Llava vision scan result text (localhost):", text);
+        if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY")) {
+          return 'RESPOND_POLITELY';
+        }
+      }
+    } catch (e) {
+      console.log("Llava vision safety scan failed or timed out on localhost:", e);
+    }
+
     return null;
+  };
+
+  const pickImageAction = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        "Permission Denied",
+        "We need media library permission to let you select images from your gallery!",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const base64Uri = `data:image/jpeg;base64,${asset.base64}`;
+        sendMockImageMessage(base64Uri, "Shared a photo from my phone!");
+      }
+    } catch (e) {
+      console.log("Image picking error:", e);
+      Alert.alert("Error", "Could not load image from your gallery.");
+    }
   };
 
   const sendMockImagePrompt = () => {
     Alert.alert(
-      "Simulate Image Message",
-      "Would you like to send a safe image or a mean/unsafe image to test Navi's Gemma Vision detector?",
+      "Send Image Message",
+      "Choose an action to test Navi's Image Safety detector:",
       [
         {
-          text: "🐶 Safe Image",
+          text: "📸 Pick from Gallery",
+          onPress: pickImageAction
+        },
+        {
+          text: "🐶 Safe Image (Mock)",
           onPress: () => sendMockImageMessage(
             "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400",
             "Look at this cute puppy!"
           )
         },
         {
-          text: "😡 Mean Image",
+          text: "😡 Mean Image (Mock)",
           onPress: () => sendMockImageMessage(
             "https://raw.githubusercontent.com/adya-chauhan/kids-online-safety-buddy/main/assets/mean_meme_test.png",
             "This meme is so funny! You look exactly like this ugly jerk! 😂"
