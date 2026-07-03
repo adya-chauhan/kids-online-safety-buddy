@@ -1113,6 +1113,35 @@ export default function App() {
     }
   };
 
+  const takePhotoAction = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        "Permission Denied",
+        "We need camera permission to let you take live photos!",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const base64Uri = `data:image/jpeg;base64,${asset.base64}`;
+        sendMockImageMessage(base64Uri, "Shared a photo from my camera!");
+      }
+    } catch (e) {
+      console.log("Camera loading error:", e);
+      Alert.alert("Error", "Could not capture photo from your camera.");
+    }
+  };
+
   const sendMockImagePrompt = () => {
     Alert.alert(
       "Send Image Message",
@@ -1121,6 +1150,10 @@ export default function App() {
         {
           text: "📸 Pick from Gallery",
           onPress: pickImageAction
+        },
+        {
+          text: "📷 Take Photo",
+          onPress: takePhotoAction
         },
         {
           text: "🐶 Safe Image (Mock)",
