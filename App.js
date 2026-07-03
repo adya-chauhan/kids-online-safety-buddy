@@ -1021,16 +1021,16 @@ export default function App() {
       return null;
     }
 
-    // 3. Local vision LLM (Gemma 3 4B via Ollama)
+    // 3. Local vision LLM (Llava via Ollama)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45-second timeout (vision model loading on CPU is slow)
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45-second timeout
 
     try {
       const response = await fetch('http://192.168.0.158:11434/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gemma3:4b',
+          model: 'llava',
           prompt: "Read any text written inside this image. If the image contains text, check if that text is rude, insulting, mean, or constitutes cyberbullying. Does the visual content or the text inside the image contain cyberbullying, insults, rude memes, or mean content? Reply with exactly one word: UNSAFE if it is mean, or SAFE if it is safe.",
           images: [base64Data],
           stream: false
@@ -1042,13 +1042,13 @@ export default function App() {
       if (response.ok) {
         const json = await response.json();
         const text = (json.response || "").toUpperCase();
-        console.log("Gemma 3 vision scan result text (primary):", text);
+        console.log("Llava vision scan result text (primary):", text);
         if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY") || text.includes("STUPID")) {
           return 'RESPOND_POLITELY';
         }
       }
     } catch (e) {
-      console.log("Gemma 3 vision safety scan failed or timed out on primary IP, trying localhost...", e);
+      console.log("Llava vision safety scan failed or timed out on primary IP, trying localhost...", e);
     }
 
     // Fallback to localhost (for simulator)
@@ -1059,7 +1059,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gemma3:4b',
+          model: 'llava',
           prompt: "Read any text written inside this image. If the image contains text, check if that text is rude, insulting, mean, or constitutes cyberbullying. Does the visual content or the text inside the image contain cyberbullying, insults, rude memes, or mean content? Reply with exactly one word: UNSAFE if it is mean, or SAFE if it is safe.",
           images: [base64Data],
           stream: false
@@ -1071,7 +1071,7 @@ export default function App() {
       if (response.ok) {
         const json = await response.json();
         const text = (json.response || "").toUpperCase();
-        console.log("Gemma 3 vision scan result text (localhost):", text);
+        console.log("Llava vision scan result text (localhost):", text);
         if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY") || text.includes("STUPID")) {
           return 'RESPOND_POLITELY';
         }
