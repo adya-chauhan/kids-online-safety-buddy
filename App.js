@@ -15,7 +15,8 @@ import {
   Animated,
   PanResponder,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Linking
 } from 'react-native';
 
 import * as ImagePicker from 'expo-image-picker';
@@ -467,6 +468,24 @@ export default function App() {
 
   const [naviRating, setNaviRating] = useState(null);
 
+  // Interception states for safety reviews
+  const [pendingImage, setPendingImage] = useState(null); // { uri, text }
+  const [pendingText, setPendingText] = useState(null); // string
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+
+  // Parental Insights Dashboard states
+  const [naviPopupCount, setNaviPopupCount] = useState(3);
+  const [toxicReceivedCount, setToxicReceivedCount] = useState(2);
+  const [naviBypassCount, setNaviBypassCount] = useState(1);
+  const [naviListenCount, setNaviListenCount] = useState(2);
+  const [naviAlertAdultCount, setNaviAlertAdultCount] = useState(1);
+  const [safetyAlertsLog, setSafetyAlertsLog] = useState([
+    { id: '1', time: 'Yesterday, 3:45 PM', type: 'Sent Message Intercepted', text: 'You are so ugly and a loser.', contact: 'Sara', action: 'Bypassed' },
+    { id: '2', time: 'Yesterday, 3:46 PM', type: 'Received Message Flagged', text: 'Why do you always fail? 😡', contact: 'Sara', action: 'Alerted' },
+    { id: '3', time: '2 days ago, 1:12 PM', type: 'Sent Message Intercepted', text: 'shut up stupid', contact: 'Anvi', action: 'Listened' }
+  ]);
+  const [parentUnlocked, setParentUnlocked] = useState(false);
+  const [parentPinInput, setParentPinInput] = useState("");
   const naviAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -524,39 +543,11 @@ export default function App() {
     setSelectModeActive(false);
   };
 
-  // Bottom navigation tab bar component (5 tabs capsule)
   const renderTabBar = () => {
     if (activeChat) return null;
     
     return (
       <View style={styles.tabBar}>
-        <TouchableOpacity 
-          style={[styles.tabItem, activeTab === 'updates' && styles.tabItemActive]}
-          onPress={() => setActiveTab('updates')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'updates' && styles.tabIconActive]}>📢</Text>
-          <Text style={[styles.tabLabel, activeTab === 'updates' && styles.tabLabelActive]} numberOfLines={1}>Updates</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.tabItem, activeTab === 'calls' && styles.tabItemActive]}
-          onPress={() => setActiveTab('calls')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'calls' && styles.tabIconActive]}>📞</Text>
-          <Text style={[styles.tabLabel, activeTab === 'calls' && styles.tabLabelActive]} numberOfLines={1}>Calls</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.tabItem, activeTab === 'communities' && styles.tabItemActive]}
-          onPress={() => setActiveTab('communities')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'communities' && styles.tabIconActive]}>👥</Text>
-          <Text style={[styles.tabLabel, activeTab === 'communities' && styles.tabLabelActive]} numberOfLines={1}>Groups</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity 
           style={[styles.tabItem, activeTab === 'chats' && styles.tabItemActive]}
           onPress={() => setActiveTab('chats')}
@@ -567,12 +558,30 @@ export default function App() {
         </TouchableOpacity>
 
         <TouchableOpacity 
+          style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
+          onPress={() => setActiveTab('dashboard')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'dashboard' && styles.tabIconActive]}>📊</Text>
+          <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]} numberOfLines={1}>Dashboard</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.tabItem, activeTab === 'resources' && styles.tabItemActive]}
+          onPress={() => setActiveTab('resources')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'resources' && styles.tabIconActive]}>📚</Text>
+          <Text style={[styles.tabLabel, activeTab === 'resources' && styles.tabLabelActive]} numberOfLines={1}>Resources</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
           style={[styles.tabItem, activeTab === 'profile' && styles.tabItemActive]}
           onPress={() => setActiveTab('profile')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'profile' && styles.tabIconActive]}>👤</Text>
-          <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]} numberOfLines={1}>You</Text>
+          <Text style={[styles.tabIcon, activeTab === 'profile' && styles.tabIconActive]}>⚙️</Text>
+          <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]} numberOfLines={1}>Settings</Text>
         </TouchableOpacity>
       </View>
     );
@@ -654,256 +663,340 @@ export default function App() {
     );
   };
 
-  // Mock Updates Feed Screen
-  const renderUpdatesScreen = () => {
-    return (
-      <View style={styles.tabContentContainer}>
-        {/* Updates Header */}
-        <View style={styles.headerVertical}>
-          <View style={styles.headerBottomRow}>
-            <Text style={styles.headerTitle}>Updates</Text>
-          </View>
-        </View>
+  const handleUnlockParent = () => {
+    if (parentPinInput === "1234") {
+      setParentUnlocked(true);
+      setParentPinInput("");
+    } else {
+      Alert.alert("Incorrect PIN", "Hint: The default Parent PIN is 1234");
+    }
+  };
 
-        <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
-          {/* Status Row */}
-          <Text style={styles.updatesSectionLabel}>Status</Text>
-          <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} style={styles.statusScrollRow}>
-            <View style={styles.myStatusCard}>
-              <View style={styles.myStatusAvatar}>
-                <Text style={styles.statusAvatarText}>👑</Text>
-                <View style={styles.statusAddBadge}><Text style={styles.statusAddText}>+</Text></View>
-              </View>
-              <Text style={styles.statusLabelText}>My Status</Text>
+  // Mock Parental Insights Dashboard Screen
+  const renderDashboardScreen = () => {
+    if (!parentUnlocked) {
+      return (
+        <View style={styles.tabContentContainer}>
+          <View style={styles.headerVertical}>
+            <View style={styles.headerBottomRow}>
+              <Text style={styles.headerTitle}>Parent Area</Text>
             </View>
+          </View>
+          <View style={[styles.scrollContent, styles.parentLockWrapper]}>
+            <Text style={styles.parentLockIcon}>🔒</Text>
+            <Text style={styles.parentLockTitle}>FamiSafe Parent Portal</Text>
+            <Text style={styles.parentLockDesc}>
+              Enter your Parent PIN to access cyberbullying insights, alert logs, and safety reports.
+            </Text>
             
-            <View style={styles.statusCard}>
-              <View style={[styles.statusAvatar, { borderColor: '#10B981' }]}>
-                <Image source={require('./assets/avatar_anvi_girl.jpg')} style={styles.statusAvatarImg} />
-              </View>
-              <Text style={styles.statusLabelText}>Anvi</Text>
-            </View>
-
-            <View style={styles.statusCard}>
-              <View style={[styles.statusAvatar, { borderColor: '#10B981' }]}>
-                <Image source={require('./assets/avatar_sara_kid.jpg')} style={styles.statusAvatarImg} />
-              </View>
-              <Text style={styles.statusLabelText}>Sara</Text>
-            </View>
-
-            <View style={styles.statusCard}>
-              <View style={[styles.statusAvatar, { borderColor: '#94A3B8' }]}>
-                <Image source={require('./assets/avatar_tanvi_indian.jpg')} style={styles.statusAvatarImg} />
-              </View>
-              <Text style={styles.statusLabelText}>Tanvi</Text>
-            </View>
-          </ScrollView>
-
-          {/* Channels Section */}
-          <Text style={styles.updatesSectionLabel}>Popular Channels</Text>
-          <View style={styles.channelCard}>
-            <View style={styles.channelBadgeBg}><Text style={styles.channelBadgeText}>🛡️</Text></View>
-            <View style={styles.channelInfo}>
-              <Text style={styles.channelName}>Navi Safety Feed</Text>
-              <Text style={styles.channelUpdateText}>"Always check with parents before playing new online games!"</Text>
-            </View>
-            <TouchableOpacity style={styles.channelFollowBtn}>
-              <Text style={styles.channelFollowBtnText}>Follow</Text>
+            <TextInput
+              style={styles.parentPinInput}
+              placeholder="Enter 4-Digit PIN"
+              placeholderTextColor="#94A3B8"
+              keyboardType="number-pad"
+              secureTextEntry={true}
+              maxLength={4}
+              value={parentPinInput}
+              onChangeText={setParentPinInput}
+            />
+            
+            <TouchableOpacity style={styles.parentUnlockBtn} onPress={handleUnlockParent}>
+              <Text style={styles.parentUnlockBtnText}>Unlock Insights</Text>
             </TouchableOpacity>
-          </View>
 
-          <View style={styles.channelCard}>
-            <View style={[styles.channelBadgeBg, { backgroundColor: '#FEF3C7' }]}><Text style={styles.channelBadgeText}>🎨</Text></View>
-            <View style={styles.channelInfo}>
-              <Text style={styles.channelName}>Creative Kids Art</Text>
-              <Text style={styles.channelUpdateText}>"Drawing competition starts this Saturday! Bring your markers!"</Text>
-            </View>
-            <TouchableOpacity style={styles.channelFollowBtn}>
-              <Text style={styles.channelFollowBtnText}>Follow</Text>
-            </TouchableOpacity>
+            <Text style={styles.parentPinHint}>Default Test PIN: 1234</Text>
           </View>
-        </ScrollView>
-      </View>
-    );
-  };
+        </View>
+      );
+    }
 
-  // Mock Calls Log Screen
-  const renderCallsScreen = () => {
+    const totalViolations = naviPopupCount + toxicReceivedCount;
+    const safetyScore = totalViolations === 0 ? 100 : Math.max(20, Math.round(100 - (totalViolations * 10)));
+
     return (
       <View style={styles.tabContentContainer}>
-        {/* Calls Header */}
+        {/* Dashboard Header */}
         <View style={styles.headerVertical}>
           <View style={styles.headerBottomRow}>
-            <Text style={styles.headerTitle}>Calls</Text>
+            <Text style={[styles.headerTitle, { fontSize: 24, flex: 1, marginRight: 8 }]} numberOfLines={1}>Insights Dashboard</Text>
+            <TouchableOpacity 
+              style={styles.parentLockBadge}
+              onPress={() => setParentUnlocked(false)}
+            >
+              <Text style={styles.parentLockBadgeText}>🔒 Lock</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.updatesSectionLabel}>Recent Calls</Text>
-          
-          <View style={styles.callRow}>
-            <Image source={require('./assets/avatar_anvi_girl.jpg')} style={styles.callAvatar} />
-            <View style={styles.callInfo}>
-              <Text style={styles.callName}>Anvi</Text>
-              <Text style={styles.callStatusText}>↗️ Outgoing, Yesterday (10 min)</Text>
+          {/* Safety Rating Overview Card */}
+          <View style={styles.safetyOverviewCard}>
+            <View style={styles.safetyScoreCircle}>
+              <Text style={styles.safetyScoreNum}>{safetyScore}%</Text>
+              <Text style={styles.safetyScoreLabel}>Safety Rating</Text>
             </View>
-            <TouchableOpacity style={styles.callActionBtn}>
-              <Text style={styles.callActionBtnIcon}>📞</Text>
-            </TouchableOpacity>
+            <View style={styles.safetyOverviewText}>
+              <Text style={styles.safetyOverviewTitle}>
+                {safetyScore >= 80 ? '🟢 Child is Safe' : safetyScore >= 50 ? '🟡 Moderate Risk' : '🔴 Immediate Attention'}
+              </Text>
+              <Text style={styles.safetyOverviewDesc}>
+                {safetyScore >= 80 
+                  ? 'Alex has maintained a highly positive chat history. Cyberbullying exposure is minimal.'
+                  : safetyScore >= 50 
+                    ? 'Some mean messages detected. Consider reviewing the alerts and chatting with Alex.'
+                    : 'Frequent toxic interactions flagged. We recommend immediate parental guidance.'}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.callRow}>
-            <Image source={require('./assets/avatar_sara_kid.jpg')} style={styles.callAvatar} />
-            <View style={styles.callInfo}>
-              <Text style={styles.callName}>Sara</Text>
-              <Text style={styles.callStatusText}>↙️ Incoming, 2 days ago (5 min)</Text>
+          {/* Quick Metrics Grid */}
+          <Text style={styles.updatesSectionLabel}>Violations Summary</Text>
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricEmoji}>🛡️</Text>
+              <Text style={styles.metricNum}>{naviPopupCount}</Text>
+              <Text style={styles.metricLabel}>Navi Popups</Text>
             </View>
-            <TouchableOpacity style={styles.callActionBtn}>
-              <Text style={styles.callActionBtnIcon}>📞</Text>
-            </TouchableOpacity>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricEmoji}>🚨</Text>
+              <Text style={styles.metricNum}>{toxicReceivedCount}</Text>
+              <Text style={styles.metricLabel}>Mean Recv'd</Text>
+            </View>
           </View>
 
-          <View style={styles.callRow}>
-            <Image source={require('./assets/avatar_mommy_indian.jpg')} style={styles.callAvatar} />
-            <View style={styles.callInfo}>
-              <Text style={styles.callName}>Mommy</Text>
-              <Text style={styles.callStatusText}>↙️ Missed Call, 3 days ago</Text>
+          <Text style={styles.updatesSectionLabel}>Alex's Choices</Text>
+          <View style={styles.metricsGrid}>
+            <View style={[styles.metricCard, { backgroundColor: '#ECFDF5' }]}>
+              <Text style={styles.metricEmoji}>😇</Text>
+              <Text style={[styles.metricNum, { color: '#059669' }]}>{naviListenCount}</Text>
+              <Text style={styles.metricLabel}>Listened</Text>
             </View>
-            <TouchableOpacity style={[styles.callActionBtn, { backgroundColor: '#FEE2E2' }]}>
-              <Text style={[styles.callActionBtnIcon, { color: '#EF4444' }]}>📞</Text>
-            </TouchableOpacity>
+            <View style={[styles.metricCard, { backgroundColor: '#FEF2F2' }]}>
+              <Text style={styles.metricEmoji}>😈</Text>
+              <Text style={[styles.metricNum, { color: '#DC2626' }]}>{naviBypassCount}</Text>
+              <Text style={styles.metricLabel}>Bypassed</Text>
+            </View>
+            <View style={[styles.metricCard, { backgroundColor: '#EFF6FF' }]}>
+              <Text style={styles.metricEmoji}>👩</Text>
+              <Text style={[styles.metricNum, { color: '#2563EB' }]}>{naviAlertAdultCount}</Text>
+              <Text style={styles.metricLabel}>Adult Reports</Text>
+            </View>
           </View>
+
+          {/* Recent Incident Log */}
+          <Text style={styles.updatesSectionLabel}>Safety Alerts Log</Text>
+          {safetyAlertsLog.length === 0 ? (
+            <View style={styles.emptyLogCard}>
+              <Text style={styles.emptyLogText}>No cyberbullying incidents flagged yet. 👍</Text>
+            </View>
+          ) : (
+            safetyAlertsLog.map((alert) => {
+              const isSent = alert.type.includes('Sent');
+              return (
+                <View key={alert.id} style={styles.alertLogCard}>
+                  <View style={styles.alertLogHeader}>
+                    <View style={styles.alertLogHeaderLeft}>
+                      <Text style={styles.alertLogEmoji}>{isSent ? '📤' : '📥'}</Text>
+                      <View>
+                        <Text style={styles.alertLogTitle}>{alert.type}</Text>
+                        <Text style={styles.alertLogTime}>{alert.time}</Text>
+                      </View>
+                    </View>
+                    <View style={[
+                      styles.alertBadge,
+                      alert.action.includes('Bypassed') ? styles.alertBadgeBypass :
+                      alert.action.includes('Listen') ? styles.alertBadgeListen :
+                      alert.action.includes('Alerted') ? styles.alertBadgeAdult : {}
+                    ]}>
+                      <Text style={[
+                        styles.alertBadgeText,
+                        alert.action.includes('Bypassed') ? styles.alertBadgeTextBypass :
+                        alert.action.includes('Listen') ? styles.alertBadgeTextListen :
+                        alert.action.includes('Alerted') ? styles.alertBadgeTextAdult : {}
+                      ]}>{alert.action}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.alertLogBody}>
+                    <Text style={styles.alertContactText}>Contact: <Text style={{fontWeight: '700'}}>{alert.contact}</Text></Text>
+                    <Text style={styles.alertMessageText}>"{alert.text}"</Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
         </ScrollView>
       </View>
     );
   };
 
-  // Mock Communities Groups Screen
-  const renderCommunitiesScreen = () => {
+  // Resources screen listing cyberbullying help & tips for the child
+  const renderResourcesScreen = () => {
     return (
       <View style={styles.tabContentContainer}>
-        {/* Communities Header */}
+        {/* Resources Header */}
         <View style={styles.headerVertical}>
           <View style={styles.headerBottomRow}>
-            <Text style={styles.headerTitle}>Communities</Text>
+            <Text style={styles.headerTitle}>Resources</Text>
           </View>
         </View>
 
         <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
           {/* Main Info Card */}
-          <View style={styles.communityIntroCard}>
-            <Text style={styles.communityIntroEmoji}>👥</Text>
-            <View style={styles.communityIntroText}>
-              <Text style={styles.communityIntroTitle}>School & Hobby Groups</Text>
-              <Text style={styles.communityIntroDesc}>
-                Connect with verified classmates and kids who share your hobbies in safe, moderated chats.
+          <View style={styles.resourceIntroCard}>
+            <Text style={styles.resourceIntroEmoji}>💡</Text>
+            <View style={styles.resourceIntroText}>
+              <Text style={styles.resourceIntroTitle}>Stay Safe & Kind Online</Text>
+              <Text style={styles.resourceIntroDesc}>
+                If someone is being mean to you, remember that it is not your fault. Here are some tools and support lines that can help!
               </Text>
             </View>
           </View>
 
-          <Text style={styles.updatesSectionLabel}>My Communities</Text>
+          {/* Safety Steps */}
+          <Text style={styles.updatesSectionLabel}>Navi's Safety Steps</Text>
+          <View style={styles.checklistCard}>
+            <View style={styles.checkItem}>
+              <Text style={styles.checkEmoji}>🛑</Text>
+              <View style={styles.checkTextWrapper}>
+                <Text style={styles.checkItemTitle}>1. Stop & Breathe</Text>
+                <Text style={styles.checkItemDesc}>Don't reply right away. Taking a deep breath helps you stay calm.</Text>
+              </View>
+            </View>
+            <View style={styles.checkItem}>
+              <Text style={styles.checkEmoji}>🔒</Text>
+              <View style={styles.checkTextWrapper}>
+                <Text style={styles.checkItemTitle}>2. Block & Restrict</Text>
+                <Text style={styles.checkItemDesc}>You don't have to listen to mean words. You can block or mute them.</Text>
+              </View>
+            </View>
+            <View style={styles.checkItem}>
+              <Text style={styles.checkEmoji}>📸</Text>
+              <View style={styles.checkTextWrapper}>
+                <Text style={styles.checkItemTitle}>3. Take Screenshots</Text>
+                <Text style={styles.checkItemDesc}>Save the messages on your phone so you have proof of what happened.</Text>
+              </View>
+            </View>
+            <View style={styles.checkItem}>
+              <Text style={styles.checkEmoji}>👩</Text>
+              <View style={styles.checkTextWrapper}>
+                <Text style={styles.checkItemTitle}>4. Tell an Adult</Text>
+                <Text style={styles.checkItemDesc}>Show the messages to a parent, teacher, or older sibling you trust.</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Help Lines */}
+          <Text style={styles.updatesSectionLabel}>People Who Can Help</Text>
           
-          <View style={styles.communityCard}>
-            <View style={styles.communityBadge}><Text style={styles.communityBadgeEmoji}>🎒</Text></View>
-            <View style={styles.communityInfo}>
-              <Text style={styles.communityName}>5th Grade Class Board</Text>
-              <Text style={styles.communitySubText}>24 Members • Moderated</Text>
+          <View style={styles.resourceCard}>
+            <Text style={styles.resourceCardEmoji}>📞</Text>
+            <View style={styles.resourceCardContent}>
+              <Text style={styles.resourceCardTitle}>National Child Help Hotline</Text>
+              <Text style={styles.resourceCardDesc}>Talk to professionals who can help you handle mean messages or scary situations.</Text>
+              <TouchableOpacity 
+                style={styles.resourceCallBtn}
+                onPress={() => Linking.openURL('tel:1-800-422-4453').catch(() => Alert.alert("Call Hotline", "Phone calls are not supported on this device. Call 1-800-422-4453."))}
+              >
+                <Text style={styles.resourceCallBtnText}>Call 1-800-4-A-CHILD</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.communityJoinBtn}>
-              <Text style={styles.communityJoinBtnText}>Open</Text>
-            </TouchableOpacity>
           </View>
 
-          <View style={styles.communityCard}>
-            <View style={[styles.communityBadge, { backgroundColor: '#EFF6FF' }]}><Text style={styles.communityBadgeEmoji}>⚽</Text></View>
-            <View style={styles.communityInfo}>
-              <Text style={styles.communityName}>Soccer Practice Kids</Text>
-              <Text style={styles.communitySubText}>18 Members • Moderated</Text>
+          <View style={styles.resourceCard}>
+            <Text style={styles.resourceCardEmoji}>💬</Text>
+            <View style={styles.resourceCardContent}>
+              <Text style={styles.resourceCardTitle}>988 Lifeline (Call or Text)</Text>
+              <Text style={styles.resourceCardDesc}>A free, confidential helpline you can call or text any time to speak with someone kind.</Text>
+              <View style={styles.resourceRowBtns}>
+                <TouchableOpacity 
+                  style={[styles.resourceCallBtn, { flex: 1, marginRight: 6 }]}
+                  onPress={() => Linking.openURL('tel:988').catch(() => Alert.alert("Call 988", "Phone calls are not supported on this device. Call 988."))}
+                >
+                  <Text style={styles.resourceCallBtnText}>Call 988</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.resourceCallBtn, { flex: 1, backgroundColor: '#10B981', borderColor: '#34D399' }]}
+                  onPress={() => Linking.openURL('sms:988').catch(() => Alert.alert("Text 988", "SMS is not supported on this device. Text 988."))}
+                >
+                  <Text style={styles.resourceCallBtnText}>Text 988</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <TouchableOpacity style={styles.communityJoinBtn}>
-              <Text style={styles.communityJoinBtnText}>Open</Text>
-            </TouchableOpacity>
           </View>
 
-          <View style={styles.communityCard}>
-            <View style={[styles.communityBadge, { backgroundColor: '#FDF2F8' }]}><Text style={styles.communityBadgeEmoji}>🎨</Text></View>
-            <View style={styles.communityInfo}>
-              <Text style={styles.communityName}>Art Fort Builders</Text>
-              <Text style={styles.communitySubText}>12 Members • Moderated</Text>
+          <View style={styles.resourceCard}>
+            <Text style={styles.resourceCardEmoji}>🌐</Text>
+            <View style={styles.resourceCardContent}>
+              <Text style={styles.resourceCardTitle}>StopBullying.gov</Text>
+              <Text style={styles.resourceCardDesc}>Learn more about cyberbullying and read stories from other kids who overcame it.</Text>
+              <TouchableOpacity 
+                style={[styles.resourceCallBtn, { backgroundColor: '#4F46E5', borderColor: '#6366F1' }]}
+                onPress={() => Linking.openURL('https://www.stopbullying.gov/').catch(() => Alert.alert("Open Website", "Could not open browser. Go to stopbullying.gov"))}
+              >
+                <Text style={styles.resourceCallBtnText}>Visit Website</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.communityJoinBtn}>
-              <Text style={styles.communityJoinBtnText}>Open</Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
       </View>
     );
   };
 
-  // Gamified Profile screen for child
+  // Settings screen for child
   const renderProfileScreen = () => {
+    const settingsItems = [
+      { id: 'profile', title: 'Edit Profile', desc: 'Change your photo, name, and status', emoji: '👤', color: '#EFF6FF', textColor: '#2563EB' },
+      { id: 'safety', title: 'Parental Control & Safety', desc: 'Manage passcode lock, filters, and logs', emoji: '🛡️', color: '#ECFDF5', textColor: '#059669' },
+      { id: 'notifications', title: 'Notifications', desc: 'Message sounds, alerts, and mute settings', emoji: '🔔', color: '#FFFBEB', textColor: '#D97706' },
+      { id: 'chats', title: 'Chat Settings', desc: 'Change chat theme, font size, and background', emoji: '💬', color: '#FDF2F8', textColor: '#DB2777' },
+      { id: 'privacy', title: 'Privacy & Last Seen', desc: 'Control who can see your online status', emoji: '🔒', color: '#F5F3FF', textColor: '#7C3AED' },
+      { id: 'help', title: 'Help & Support', desc: 'FAQ guide, safety tips, and customer care', emoji: '❓', color: '#F1F5F9', textColor: '#475569' },
+      { id: 'about', title: 'About Navi', desc: 'Version 1.0.0 • Terms & Privacy Policy', emoji: 'ℹ️', color: '#F0FDFA', textColor: '#0D9488' }
+    ];
+
     return (
       <View style={styles.tabContentContainer}>
-        {/* Profile Header */}
+        {/* Settings Header */}
         <View style={styles.headerVertical}>
           <View style={styles.headerBottomRow}>
-            <Text style={styles.headerTitle}>You</Text>
+            <Text style={styles.headerTitle}>Settings</Text>
           </View>
         </View>
 
         <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
-          {/* Level details card */}
-          <View style={styles.profileAvatarCard}>
-            <View style={styles.profileAvatarBorder}>
-              <Text style={styles.profileAvatarText}>👑</Text>
+          {/* Interactive Profile Summary Card */}
+          <View style={styles.settingsMiniProfile}>
+            <View style={styles.settingsAvatarCircle}>
+              <Text style={styles.settingsAvatarText}>👤</Text>
             </View>
-            <Text style={styles.profileName}>Junior Defender</Text>
-            <Text style={styles.profileSub}>Level 3 Safety Shield</Text>
-            
-            {/* Progress bar */}
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: '75%' }]} />
+            <View style={styles.settingsProfileInfo}>
+              <Text style={styles.settingsProfileName}>Alex</Text>
+              <Text style={styles.settingsProfileDesc}>Child Account</Text>
             </View>
-            <Text style={styles.progressLabel}>75% towards Safety Master status</Text>
           </View>
 
-          {/* Safety Guide quick access */}
-          <TouchableOpacity 
-            style={styles.profileSafetyLinkCard}
-            onPress={() => setActiveTab('safety')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.profileSafetyLinkIcon}>🛡️</Text>
-            <View style={styles.profileSafetyLinkText}>
-              <Text style={styles.profileSafetyLinkTitle}>Open Online Safety Guide</Text>
-              <Text style={styles.profileSafetyLinkDesc}>Review Navi's safety tips and guidelines.</Text>
-            </View>
-            <Text style={styles.profileSafetyLinkArrow}>→</Text>
-          </TouchableOpacity>
-
-          {/* Grid of badges */}
-          <Text style={styles.profileSectionLabel}>My Badges</Text>
-          <View style={styles.badgesContainer}>
-            <View style={styles.badgeCard}>
-              <Text style={styles.badgeEmoji}>🛡️</Text>
-              <Text style={styles.badgeTitle}>Privacy Hero</Text>
-              <Text style={styles.badgeDesc}>Kept secret info private</Text>
-            </View>
-            <View style={styles.badgeCard}>
-              <Text style={styles.badgeEmoji}>😊</Text>
-              <Text style={styles.badgeTitle}>Politeness Star</Text>
-              <Text style={styles.badgeDesc}>Used friendly boundary replies</Text>
-            </View>
-            <View style={styles.badgeCard}>
-              <Text style={styles.badgeEmoji}>👩</Text>
-              <Text style={styles.badgeTitle}>Guardian Link</Text>
-              <Text style={styles.badgeDesc}>Communicated with trusted adults</Text>
-            </View>
-            <View style={[styles.badgeCard, styles.badgeCardLocked]}>
-              <Text style={styles.badgeEmojiLocked}>🔒</Text>
-              <Text style={styles.badgeTitleLocked}>Perfect Week</Text>
-              <Text style={styles.badgeDescLocked}>Maintain safe chat for 7 days</Text>
-            </View>
+          {/* Settings Options List */}
+          <View style={styles.settingsListCard}>
+            {settingsItems.map((item, idx) => (
+              <TouchableOpacity 
+                key={item.id}
+                style={[
+                  styles.settingsRow,
+                  idx === settingsItems.length - 1 && { borderBottomWidth: 0 }
+                ]}
+                onPress={() => alert(`${item.title} settings are coming soon!`)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.settingsRowEmojiBg, { backgroundColor: item.color }]}>
+                  <Text style={[styles.settingsRowEmoji, { color: item.textColor }]}>{item.emoji}</Text>
+                </View>
+                <View style={styles.settingsRowContent}>
+                  <Text style={styles.settingsRowTitle}>{item.title}</Text>
+                  <Text style={styles.settingsRowDesc}>{item.desc}</Text>
+                </View>
+                <Text style={styles.settingsRowArrow}>→</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </ScrollView>
       </View>
@@ -969,6 +1062,8 @@ export default function App() {
 
   const handleSelectPoliteSuggestion = (suggestionText) => {
     sendSafeFeedback(suggestionText);
+    setPendingImage(null);
+    setPendingText(null);
     setSuggestionsVisible(false);
     setPoliteSuggestions([]);
   };
@@ -1002,82 +1097,17 @@ export default function App() {
     }
   };
 
-  const checkImageSafetyWithGemma = async (imageUri) => {
-    // 1. Check offline fallback first (reliable offline testing)
+  const checkImageSafetyWithGemma = async (imageUri, messageText = "") => {
+    // 1. Check offline mock image trigger (for test buttons)
     if (imageUri && imageUri.includes("mean_meme_test")) {
       return 'RESPOND_POLITELY'; // Flagged as rude/mean image
     }
 
-    // 2. Convert imageUri to clean base64 data for local vision LLM
-    let base64Data = "";
-    if (imageUri.startsWith("data:image/")) {
-      base64Data = imageUri.split(",")[1];
-    } else if (imageUri.startsWith("http")) {
-      base64Data = await convertUrlToBase64(imageUri);
-    }
-
-    if (!base64Data) {
-      console.log("No base64 data available for Ollama vision scan.");
-      return null;
-    }
-
-    // 3. Local vision LLM (Llava via Ollama)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45-second timeout
-
-    try {
-      const response = await fetch('http://192.168.0.158:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'llava',
-          prompt: "Read any text written inside this image. If the image contains text, check if that text is rude, insulting, mean, or constitutes cyberbullying. Does the visual content or the text inside the image contain cyberbullying, insults, rude memes, or mean content? Reply with exactly one word: UNSAFE if it is mean, or SAFE if it is safe.",
-          images: [base64Data],
-          stream: false
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const json = await response.json();
-        const text = (json.response || "").toUpperCase();
-        console.log("Llava vision scan result text (primary):", text);
-        if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY") || text.includes("STUPID")) {
-          return 'RESPOND_POLITELY';
-        }
-      }
-    } catch (e) {
-      console.log("Llava vision safety scan failed or timed out on primary IP, trying localhost...", e);
-    }
-
-    // Fallback to localhost (for simulator)
-    const controllerLocal = new AbortController();
-    const timeoutIdLocal = setTimeout(() => controllerLocal.abort(), 35000); // 35-second timeout
-    try {
-      const response = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'llava',
-          prompt: "Read any text written inside this image. If the image contains text, check if that text is rude, insulting, mean, or constitutes cyberbullying. Does the visual content or the text inside the image contain cyberbullying, insults, rude memes, or mean content? Reply with exactly one word: UNSAFE if it is mean, or SAFE if it is safe.",
-          images: [base64Data],
-          stream: false
-        }),
-        signal: controllerLocal.signal
-      });
-      clearTimeout(timeoutIdLocal);
-
-      if (response.ok) {
-        const json = await response.json();
-        const text = (json.response || "").toUpperCase();
-        console.log("Llava vision scan result text (localhost):", text);
-        if (text.includes("UNSAFE") || text.includes("RUDE") || text.includes("MEAN") || text.includes("BULLET") || text.includes("BULLY") || text.includes("STUPID")) {
-          return 'RESPOND_POLITELY';
-        }
-      }
-    } catch (e) {
-      console.log("Gemma 3 vision safety scan failed or timed out on localhost:", e);
+    // 2. Check if the accompanying message text contains key mock keywords
+    const lowerText = messageText.toLowerCase();
+    if (lowerText.includes("stupid") || lowerText.includes("mean") || lowerText.includes("ugly") || lowerText.includes("loser")) {
+      console.log("Mock image safety scan flagged keyword:", lowerText);
+      return 'RESPOND_POLITELY';
     }
 
     return null;
@@ -1177,7 +1207,7 @@ export default function App() {
     );
   };
 
-  const sendMockImageMessage = async (uri, text) => {
+  const sendFinalImageMessage = (uri, text, isMeanImage = false) => {
     if (!activeChat) return;
     const contactId = activeChat.id;
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1204,15 +1234,9 @@ export default function App() {
         : p
     ));
 
-    // Scan image safety with Gemma
-    const imageSafety = await checkImageSafetyWithGemma(uri);
-    if (imageSafety) {
-      setSafetyCategory(imageSafety);
-      setNaviSpeechVisible(true);
-    } else {
-      setSafetyCategory(null);
-      setNaviSpeechVisible(false);
-    }
+    // Clear safety states
+    setSafetyCategory(null);
+    setNaviSpeechVisible(false);
 
     // Trigger auto reply if online or away
     if (activeChat.status !== 'offline') {
@@ -1222,7 +1246,7 @@ export default function App() {
         setIsTyping(false);
         
         let replyText = "";
-        if (imageSafety) {
+        if (isMeanImage) {
           replyText = `Please don't send me mean memes. Let's keep our conversation kind and friendly! 😊`;
         } else {
           replyText = `Wow, that looks so cool! Thanks for sharing! 🌟`;
@@ -1251,12 +1275,72 @@ export default function App() {
     }
   };
 
-  const handleNaviIgnorePivot = () => {
-    sendSafeFeedback("Hey, let's talk about something else! What's your favorite school subject? 📚");
+  const sendMockImageMessage = async (uri, text) => {
+    if (!activeChat) return;
+
+    setIsAnalyzingImage(true);
+    // Scan image safety with Gemini
+    const imageSafety = await checkImageSafetyWithGemma(uri, text);
+    setIsAnalyzingImage(false);
+
+    if (imageSafety) {
+      setPendingImage({ uri, text });
+      setPendingText(null);
+      setSafetyCategory(imageSafety);
+      setNaviSpeechVisible(true);
+      // Increment parent insights counter
+      setNaviPopupCount(prev => prev + 1);
+      // Add incident to safety log
+      const newAlert = {
+        id: `alert_${Date.now()}`,
+        time: 'Just Now',
+        type: 'Sent Image Intercepted',
+        text: text || '[Sent Image Message]',
+        contact: activeChat ? activeChat.name : 'Unknown',
+        action: 'Pending Reconsideration'
+      };
+      setSafetyAlertsLog(prev => [newAlert, ...prev]);
+    } else {
+      sendFinalImageMessage(uri, text, false);
+    }
+  };
+
+  const handleIgnoreAndSend = () => {
+    setNaviBypassCount(prev => prev + 1);
+    setSafetyAlertsLog(prev => prev.map((a, idx) => idx === 0 && a.action === 'Pending Reconsideration' ? { ...a, action: 'Bypassed' } : a));
+
+    if (pendingImage) {
+      sendFinalImageMessage(pendingImage.uri, pendingImage.text, true);
+      setPendingImage(null);
+    } else if (pendingText) {
+      sendFinalTextMessage(pendingText);
+      setPendingText(null);
+    }
+    setSafetyCategory(null);
+    setNaviSpeechVisible(false);
+  };
+
+  const handleListenToSuggestions = () => {
+    if (!activeChat) return;
+    setNaviListenCount(prev => prev + 1);
+    setSafetyAlertsLog(prev => prev.map((a, idx) => idx === 0 && a.action === 'Pending Reconsideration' ? { ...a, action: 'Listened' } : a));
+
+    let textToAnalyze = "";
+    if (pendingText) {
+      textToAnalyze = pendingText;
+    } else if (pendingImage) {
+      textToAnalyze = pendingImage.text || "mean photo";
+    }
+
+    setSuggestionsVisible(true);
+    generatePoliteSuggestions(textToAnalyze);
   };
 
   const handleNaviTellAdult = () => {
     if (!activeChat) return;
+    setNaviAlertAdultCount(prev => prev + 1);
+    setSafetyAlertsLog(prev => prev.map((a, idx) => idx === 0 && a.action === 'Pending Reconsideration' ? { ...a, action: 'Alerted' } : a));
+
     const contactId = activeChat.id;
     const activeMessages = messages[contactId] || [];
     const lastMsgText = activeMessages.length > 0 ? activeMessages[activeMessages.length - 1].text : "";
@@ -1265,7 +1349,17 @@ export default function App() {
     setNaviSpeechVisible(false);
 
     // Construct the automatic report text
-    const reportText = `🚨 [Navi Safety Report] ${activeChat.name} sent me a mean message: "${lastMsgText}". Navi helped me handle this safely.`;
+    let reportText = "";
+    if (pendingImage) {
+      reportText = `🚨 [Navi Safety Report] I was about to send a mean image. Navi helped me reconsider and handle this safely.`;
+    } else if (pendingText) {
+      reportText = `🚨 [Navi Safety Report] I was about to send a mean message: "${pendingText}". Navi helped me reconsider and handle this safely.`;
+    } else {
+      reportText = `🚨 [Navi Safety Report] ${activeChat.name} sent me a mean message: "${lastMsgText}". Navi helped me handle this safely.`;
+    }
+
+    setPendingImage(null);
+    setPendingText(null);
 
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1404,25 +1498,8 @@ export default function App() {
     }
   }, [activeChat, messages, isTyping]);
 
-  // Handle message sending
-  const sendMessage = () => {
-    if (!inputText.trim() || !activeChat) return;
-
-    const messageText = inputText.trim();
-
-    // Check message safety BEFORE sending
-    const safety = checkMessageSafety(messageText, true);
-
-    // If it is unsafe, and the user hasn't been warned yet for this exact message:
-    if (safety && (!isBypassReady || interceptedText !== messageText)) {
-      // Intercept and show Navi safety options
-      setSafetyCategory(safety);
-      setNaviSpeechVisible(true);
-      setInterceptedText(messageText);
-      setIsBypassReady(true);
-      return; // Intercept: do not send yet
-    }
-
+  const sendFinalTextMessage = (messageText) => {
+    if (!activeChat) return;
     const contactId = activeChat.id;
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1518,10 +1595,55 @@ export default function App() {
           if (replySafety) {
             setSafetyCategory(replySafety);
             setNaviSpeechVisible(true);
+            // Increment Parent Insights toxic received count
+            setToxicReceivedCount(prev => prev + 1);
+            // Add incident to safety log
+            const newAlert = {
+              id: `alert_${Date.now()}`,
+              time: 'Just Now',
+              type: 'Received Message Flagged',
+              text: replyText,
+              contact: activeChat ? activeChat.name : 'Unknown',
+              action: 'Navi Alerted'
+            };
+            setSafetyAlertsLog(prev => [newAlert, ...prev]);
           }
         }
       }, 1500);
     }
+  };
+
+  // Handle message sending
+  const sendMessage = () => {
+    if (!inputText.trim() || !activeChat) return;
+
+    const messageText = inputText.trim();
+
+    // Check message safety BEFORE sending
+    const safety = checkMessageSafety(messageText, true);
+
+    // If it is unsafe, intercept and show Navi safety options
+    if (safety) {
+      setPendingText(messageText);
+      setPendingImage(null);
+      setSafetyCategory(safety);
+      setNaviSpeechVisible(true);
+      // Increment Parent Insights popup count
+      setNaviPopupCount(prev => prev + 1);
+      // Add incident to safety log
+      const newAlert = {
+        id: `alert_${Date.now()}`,
+        time: 'Just Now',
+        type: 'Sent Message Intercepted',
+        text: messageText,
+        contact: activeChat ? activeChat.name : 'Unknown',
+        action: 'Pending Reconsideration'
+      };
+      setSafetyAlertsLog(prev => [newAlert, ...prev]);
+      return; // Intercept: do not send yet
+    }
+
+    sendFinalTextMessage(messageText);
   };
 
   const triggerSimulationMessage = async (type) => {
@@ -1574,6 +1696,18 @@ export default function App() {
       if (replySafety) {
         setSafetyCategory(replySafety);
         setNaviSpeechVisible(true);
+        // Increment Parent Insights toxic received count
+        setToxicReceivedCount(prev => prev + 1);
+        // Add incident to safety log
+        const newAlert = {
+          id: `alert_${Date.now()}`,
+          time: 'Just Now',
+          type: 'Received Message Flagged',
+          text: replyText,
+          contact: activeChat ? activeChat.name : 'Unknown',
+          action: 'Navi Alerted'
+        };
+        setSafetyAlertsLog(prev => [newAlert, ...prev]);
       }
     }
   };
@@ -1597,7 +1731,7 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#E6F0FA" />
       
       <KeyboardAvoidingView 
@@ -1738,8 +1872,13 @@ export default function App() {
                 style={styles.imageAttachBtn} 
                 onPress={sendMockImagePrompt}
                 activeOpacity={0.7}
+                disabled={isAnalyzingImage}
               >
-                <Text style={styles.imageAttachText}>📷</Text>
+                {isAnalyzingImage ? (
+                  <ActivityIndicator size="small" color="#4F46E5" />
+                ) : (
+                  <Text style={styles.imageAttachText}>📷</Text>
+                )}
               </TouchableOpacity>
               
               <TextInput
@@ -1797,21 +1936,26 @@ export default function App() {
                     </>
                   ) : (
                     <>
-                      <Text style={styles.naviSpeechTitle}>🛡️ Navi Safety Tip:</Text>
+                      <Text style={styles.naviSpeechTitle}>🛡️ Reconsider Your Choice:</Text>
+                      <Text style={styles.naviSpeechText}>
+                        {pendingImage 
+                          ? "That image looks a bit mean or hurtful. Please reconsider before sending it."
+                          : "That message looks a bit mean or hurtful. Please reconsider before sending it."}
+                      </Text>
                       
                       {/* Safety Options */}
                       <TouchableOpacity 
                         style={styles.naviOptionBtn}
-                        onPress={handleNaviIgnorePivot}
+                        onPress={handleIgnoreAndSend}
                       >
-                        <Text style={styles.naviOptionText}>🔀 Ignore & pivot</Text>
+                        <Text style={styles.naviOptionText}>🔀 Ignore & send anyway</Text>
                       </TouchableOpacity>
                       
                       <TouchableOpacity 
                         style={styles.naviOptionBtn}
-                        onPress={handleNaviRespondPolitely}
+                        onPress={handleListenToSuggestions}
                       >
-                        <Text style={styles.naviOptionText}>💬 Reply politely</Text>
+                        <Text style={styles.naviOptionText}>💬 Listen to suggestions</Text>
                       </TouchableOpacity>
                       
                       <TouchableOpacity 
@@ -1995,11 +2139,11 @@ export default function App() {
               </>
             )}
 
-            {activeTab === 'updates' && renderUpdatesScreen()}
 
-            {activeTab === 'calls' && renderCallsScreen()}
 
-            {activeTab === 'communities' && renderCommunitiesScreen()}
+            {activeTab === 'dashboard' && renderDashboardScreen()}
+
+            {activeTab === 'resources' && renderResourcesScreen()}
 
             {activeTab === 'safety' && renderSafetyScreen()}
 
@@ -2263,7 +2407,7 @@ export default function App() {
           </View>
         )}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -2271,6 +2415,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#E6F0FA',
+    paddingTop: Platform.OS === 'ios' ? 47 : 0,
   },
   keyboardAvoid: {
     flex: 1,
@@ -4008,5 +4153,453 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '850',
+  },
+  // Resources Screen Styles
+  resourceIntroCard: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  resourceIntroEmoji: {
+    fontSize: 32,
+    marginRight: 16,
+  },
+  resourceIntroText: {
+    flex: 1,
+  },
+  resourceIntroTitle: {
+    fontSize: 16,
+    fontWeight: '850',
+    color: '#312E81',
+    marginBottom: 4,
+  },
+  resourceIntroDesc: {
+    fontSize: 12,
+    color: '#4F46E5',
+    lineHeight: 16,
+  },
+  checklistCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  checkItem: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    alignItems: 'flex-start',
+  },
+  checkEmoji: {
+    fontSize: 24,
+    marginRight: 12,
+    marginTop: 2,
+  },
+  checkTextWrapper: {
+    flex: 1,
+  },
+  checkItemTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  checkItemDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  resourceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'flex-start',
+  },
+  resourceCardEmoji: {
+    fontSize: 28,
+    marginRight: 12,
+    marginTop: 2,
+  },
+  resourceCardContent: {
+    flex: 1,
+  },
+  resourceCardTitle: {
+    fontSize: 14,
+    fontWeight: '850',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  resourceCardDesc: {
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  resourceCallBtn: {
+    backgroundColor: '#3B82F6',
+    borderWidth: 1,
+    borderColor: '#2563EB',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resourceCallBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  resourceRowBtns: {
+    flexDirection: 'row',
+  },
+  // Settings Screen Styles
+  settingsMiniProfile: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  settingsAvatarCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    marginRight: 16,
+  },
+  settingsAvatarText: {
+    fontSize: 24,
+  },
+  settingsProfileInfo: {
+    flex: 1,
+  },
+  settingsProfileName: {
+    fontSize: 16,
+    fontWeight: '850',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  settingsProfileDesc: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '700',
+  },
+  settingsListCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 20,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  settingsRowEmojiBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  settingsRowEmoji: {
+    fontSize: 18,
+  },
+  settingsRowContent: {
+    flex: 1,
+  },
+  settingsRowTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  settingsRowDesc: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  settingsRowArrow: {
+    fontSize: 16,
+    color: '#CBD5E1',
+    fontWeight: '750',
+    marginLeft: 8,
+  },
+  // Parent Dashboard Styles
+  parentLockWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    backgroundColor: '#E6F0FA',
+  },
+  parentLockIcon: {
+    fontSize: 64,
+    marginBottom: 24,
+  },
+  parentLockTitle: {
+    fontSize: 22,
+    fontWeight: '850',
+    color: '#0F172A',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  parentLockDesc: {
+    fontSize: 14,
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 32,
+  },
+  parentPinInput: {
+    width: '80%',
+    height: 54,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 20,
+    letterSpacing: 8,
+  },
+  parentUnlockBtn: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    width: '80%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  parentUnlockBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  parentPinHint: {
+    marginTop: 16,
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  parentLockBadge: {
+    backgroundColor: '#EF4444',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  parentLockBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  safetyOverviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+  },
+  safetyScoreCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 6,
+    borderColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  safetyScoreNum: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  safetyScoreLabel: {
+    fontSize: 8,
+    color: '#64748B',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  safetyOverviewText: {
+    flex: 1,
+  },
+  safetyOverviewTitle: {
+    fontSize: 16,
+    fontWeight: '850',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  safetyOverviewDesc: {
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 16,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  metricEmoji: {
+    fontSize: 24,
+    marginBottom: 8,
+  },
+  metricNum: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  metricLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  emptyLogCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  emptyLogText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  alertLogCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  alertLogHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingBottom: 10,
+    marginBottom: 10,
+  },
+  alertLogHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  alertLogEmoji: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  alertLogTitle: {
+    fontSize: 13,
+    fontWeight: '850',
+    color: '#0F172A',
+  },
+  alertLogTime: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  alertBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  alertBadgeBypass: {
+    backgroundColor: '#FEF2F2',
+  },
+  alertBadgeListen: {
+    backgroundColor: '#ECFDF5',
+  },
+  alertBadgeAdult: {
+    backgroundColor: '#EFF6FF',
+  },
+  alertBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  alertBadgeTextBypass: {
+    color: '#EF4444',
+  },
+  alertBadgeTextListen: {
+    color: '#10B981',
+  },
+  alertBadgeTextAdult: {
+    color: '#3B82F6',
+  },
+  alertLogBody: {
+    marginTop: 2,
+  },
+  alertContactText: {
+    fontSize: 11,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  alertMessageText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: '#334155',
+    lineHeight: 18,
+    backgroundColor: '#F8FAFC',
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: '#E2E8F0',
   },
 });
