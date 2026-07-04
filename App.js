@@ -480,9 +480,9 @@ export default function App() {
   const [naviListenCount, setNaviListenCount] = useState(2);
   const [naviAlertAdultCount, setNaviAlertAdultCount] = useState(1);
   const [safetyAlertsLog, setSafetyAlertsLog] = useState([
-    { id: '1', time: 'Yesterday, 3:45 PM', type: 'Sent Message Intercepted', text: 'You are so ugly and a loser.', contact: 'Sara', action: 'Bypassed' },
-    { id: '2', time: 'Yesterday, 3:46 PM', type: 'Received Message Flagged', text: 'Why do you always fail? 😡', contact: 'Sara', action: 'Alerted' },
-    { id: '3', time: '2 days ago, 1:12 PM', type: 'Sent Message Intercepted', text: 'shut up stupid', contact: 'Anvi', action: 'Listened' }
+    { id: '1', time: 'Yesterday, 3:45 PM', type: 'Sent Message Intercepted', contact: 'Sara', action: 'Bypassed' },
+    { id: '2', time: 'Yesterday, 3:46 PM', type: 'Received Message Flagged', contact: 'Sara', action: 'Alerted' },
+    { id: '3', time: '2 days ago, 1:12 PM', type: 'Sent Message Intercepted', contact: 'Anvi', action: 'Listened' }
   ]);
   const [parentUnlocked, setParentUnlocked] = useState(false);
   const [parentPinInput, setParentPinInput] = useState("");
@@ -818,7 +818,6 @@ export default function App() {
                   </View>
                   <View style={styles.alertLogBody}>
                     <Text style={styles.alertContactText}>Contact: <Text style={{fontWeight: '700'}}>{alert.contact}</Text></Text>
-                    <Text style={styles.alertMessageText}>"{alert.text}"</Text>
                   </View>
                 </View>
               );
@@ -1295,7 +1294,6 @@ export default function App() {
         id: `alert_${Date.now()}`,
         time: 'Just Now',
         type: 'Sent Image Intercepted',
-        text: text || '[Sent Image Message]',
         contact: activeChat ? activeChat.name : 'Unknown',
         action: 'Pending Reconsideration'
       };
@@ -1602,7 +1600,6 @@ export default function App() {
               id: `alert_${Date.now()}`,
               time: 'Just Now',
               type: 'Received Message Flagged',
-              text: replyText,
               contact: activeChat ? activeChat.name : 'Unknown',
               action: 'Navi Alerted'
             };
@@ -1635,7 +1632,6 @@ export default function App() {
         id: `alert_${Date.now()}`,
         time: 'Just Now',
         type: 'Sent Message Intercepted',
-        text: messageText,
         contact: activeChat ? activeChat.name : 'Unknown',
         action: 'Pending Reconsideration'
       };
@@ -1703,7 +1699,6 @@ export default function App() {
           id: `alert_${Date.now()}`,
           time: 'Just Now',
           type: 'Received Message Flagged',
-          text: replyText,
           contact: activeChat ? activeChat.name : 'Unknown',
           action: 'Navi Alerted'
         };
