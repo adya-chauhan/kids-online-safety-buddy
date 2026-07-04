@@ -731,8 +731,10 @@ export default function App() {
         <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
           {/* Safety Rating Overview Card */}
           <View style={styles.safetyOverviewCard}>
-            <View style={styles.safetyScoreCircle}>
-              <Text style={styles.safetyScoreNum}>{safetyScore}%</Text>
+            <View style={styles.safetyScoreWrapper}>
+              <View style={styles.safetyScoreCircle}>
+                <Text style={styles.safetyScoreNum}>{safetyScore}%</Text>
+              </View>
               <Text style={styles.safetyScoreLabel}>Safety Rating</Text>
             </View>
             <View style={styles.safetyOverviewText}>
@@ -749,42 +751,24 @@ export default function App() {
             </View>
           </View>
 
-          {/* Quick Metrics Grid */}
+          {/* Quick Metrics - Single Box */}
           <Text style={styles.updatesSectionLabel}>Violations Summary</Text>
-          <View style={styles.metricsGrid}>
-            <View style={styles.metricCard}>
+          <View style={styles.singleMetricsCard}>
+            <View style={styles.singleMetricItem}>
               <Text style={styles.metricEmoji}>🛡️</Text>
               <Text style={styles.metricNum}>{naviPopupCount}</Text>
               <Text style={styles.metricLabel}>Navi Popups</Text>
             </View>
-            <View style={styles.metricCard}>
+            <View style={styles.metricSeparator} />
+            <View style={styles.singleMetricItem}>
               <Text style={styles.metricEmoji}>🚨</Text>
               <Text style={styles.metricNum}>{toxicReceivedCount}</Text>
               <Text style={styles.metricLabel}>Mean Recv'd</Text>
             </View>
           </View>
 
-          <Text style={styles.updatesSectionLabel}>Alex's Choices</Text>
-          <View style={styles.metricsGrid}>
-            <View style={[styles.metricCard, { backgroundColor: '#ECFDF5' }]}>
-              <Text style={styles.metricEmoji}>😇</Text>
-              <Text style={[styles.metricNum, { color: '#059669' }]}>{naviListenCount}</Text>
-              <Text style={styles.metricLabel}>Listened</Text>
-            </View>
-            <View style={[styles.metricCard, { backgroundColor: '#FEF2F2' }]}>
-              <Text style={styles.metricEmoji}>😈</Text>
-              <Text style={[styles.metricNum, { color: '#DC2626' }]}>{naviBypassCount}</Text>
-              <Text style={styles.metricLabel}>Bypassed</Text>
-            </View>
-            <View style={[styles.metricCard, { backgroundColor: '#EFF6FF' }]}>
-              <Text style={styles.metricEmoji}>👩</Text>
-              <Text style={[styles.metricNum, { color: '#2563EB' }]}>{naviAlertAdultCount}</Text>
-              <Text style={styles.metricLabel}>Adult Reports</Text>
-            </View>
-          </View>
-
-          {/* Recent Incident Log */}
-          <Text style={styles.updatesSectionLabel}>Safety Alerts Log</Text>
+          {/* Recent Incident Log under "Choices" */}
+          <Text style={styles.updatesSectionLabel}>Choices</Text>
           {safetyAlertsLog.length === 0 ? (
             <View style={styles.emptyLogCard}>
               <Text style={styles.emptyLogText}>No cyberbullying incidents flagged yet. 👍</Text>
@@ -4433,15 +4417,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.02,
     shadowRadius: 8,
   },
+  safetyScoreWrapper: {
+    alignItems: 'center',
+    marginRight: 16,
+  },
   safetyScoreCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 6,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 5,
     borderColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginBottom: 6,
   },
   safetyScoreNum: {
     fontSize: 20,
@@ -4449,10 +4437,10 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   safetyScoreLabel: {
-    fontSize: 8,
+    fontSize: 10,
     color: '#64748B',
     fontWeight: '700',
-    textTransform: 'uppercase',
+    textAlign: 'center',
   },
   safetyOverviewText: {
     flex: 1,
@@ -4596,5 +4584,24 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 0.5,
     borderColor: '#E2E8F0',
+  },
+  singleMetricsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  singleMetricItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  metricSeparator: {
+    width: 1.5,
+    height: 40,
+    backgroundColor: '#F1F5F9',
   },
 });
