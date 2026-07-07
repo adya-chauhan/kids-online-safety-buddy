@@ -34,6 +34,15 @@ import {
   generateSimulatedMessage 
 } from './services/LocalLLMService';
 
+import { 
+  supabase, 
+  upsertProfile, 
+  fetchProfiles, 
+  fetchChatHistory, 
+  sendSupabaseMessage, 
+  subscribeToRealtimeMessages 
+} from './services/SupabaseService';
+
 const initialProfilesData = [
   {
     id: '1',
@@ -455,7 +464,7 @@ const checkMessageSafety = (text, isUser = true) => {
 };
 
 export default function App() {
-  const [profiles, setProfiles] = useState(initialProfilesData);
+  const [profiles, setProfiles] = useState(initialProfilesData.map(p => ({ ...p, is_simulated: true })));
   const [messages, setMessages] = useState(initialMessagesData);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -501,6 +510,113 @@ export default function App() {
   const naviMascotAnim = useRef(new Animated.Value(0)).current;
 
   const naviAnim = useRef(new Animated.Value(0)).current;
+
+  const activeChatRef = useRef(activeChat);
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
+
+  useEffect(() => {
+    const initSupabase = async () => {
+      if (!supabase) {
+        console.log('[Supabase] Client not initialized. Running in local simulation mode.');
+        return;
+      }
+
+      console.log('[Supabase] Connecting...');
+
+      // 1. Register/upsert current user (Pari, id: '7')
+      const currentUser = profiles.find(p => p.id === '7');
+      if (currentUser) {
+        await upsertProfile(currentUser);
+      }
+
+      // 2. Fetch other profiles from Supabase
+      const dbProfiles = await fetchProfiles();
+      if (dbProfiles.length > 0) {
+        const filteredDbProfiles = dbProfiles
+          .filter(p => p.id !== '7') // Exclude current user
+          .map(p => ({
+            id: p.id,
+            name: p.name,
+            role: p.role,
+            avatar: require('./assets/avatar_anvi_kid.jpg'), // default avatar
+            status: 'online',
+            statusText: p.bio || 'Active',
+            time: 'Just Now',
+            unread: 0,
+            email: p.email,
+            phone: p.phone,
+            bio: p.bio,
+            lastUpdated: new Date(p.last_updated).getTime(),
+            is_simulated: false
+          }));
+
+        // Merge (avoid duplicates)
+        setProfiles(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newProfiles = [...prev];
+          for (const dp of filteredDbProfiles) {
+            if (!existingIds.has(dp.id)) {
+              newProfiles.push(dp);
+            }
+          }
+          return newProfiles;
+        });
+      }
+
+      // 3. Subscribe to real-time messages sent to current user ('7')
+      const subscription = subscribeToRealtimeMessages('7', (newMsg) => {
+        const senderId = newMsg.sender_id;
+        const now = new Date(newMsg.created_at);
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const mappedMsg = {
+          id: newMsg.id,
+          text: newMsg.text,
+          sender: 'contact',
+          time: timeStr,
+          image: newMsg.image
+        };
+
+        // Append to messages state
+        setMessages(prev => ({
+          ...prev,
+          [senderId]: [...(prev[senderId] || []), mappedMsg]
+        }));
+
+        // Scroll to bottom and check safety if currently chatting
+        if (activeChatRef.current && activeChatRef.current.id === senderId) {
+          const safety = checkMessageSafety(newMsg.text, false);
+          if (safety) {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setSafetyCategory(safety);
+            setNaviSpeechVisible(true);
+            setToxicReceivedCount(prev => prev + 1);
+            const newAlert = {
+              id: `alert_${Date.now()}`,
+              time: 'Just Now',
+              type: 'Received Message Flagged',
+              contact: activeChatRef.current.name,
+              action: 'Navi Alerted'
+            };
+            setSafetyAlertsLog(prev => [newAlert, ...prev]);
+          }
+        } else {
+          // Set unread count for profile card
+          setProfiles(prev => prev.map(p => 
+            p.id === senderId ? { ...p, unread: (p.unread || 0) + 1 } : p
+          ));
+        }
+      });
+
+      return () => {
+        if (subscription) subscription.unsubscribe();
+      };
+    };
+
+    initSupabase();
+  }, []);
 
   useEffect(() => {
     if (safetyCategory !== null) {
@@ -1267,7 +1383,7 @@ export default function App() {
     );
   };
 
-  const sendFinalImageMessage = (uri, text, isMeanImage = false) => {
+  const sendFinalImageMessage = async (uri, text, isMeanImage = false) => {
     if (!activeChat) return;
     const contactId = activeChat.id;
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1298,40 +1414,61 @@ export default function App() {
     setSafetyCategory(null);
     setNaviSpeechVisible(false);
 
-    // Trigger auto reply if online or away
-    if (activeChat.status !== 'offline') {
-      setIsTyping(true);
-      
-      setTimeout(() => {
-        setIsTyping(false);
+    // Send to Supabase if real user
+    if (supabase && !activeChat.is_simulated) {
+      await sendSupabaseMessage('7', contactId, text, uri);
+    } else {
+      // Trigger auto reply if online or away (only for simulated contacts)
+      if (activeChat.status !== 'offline') {
+        setIsTyping(true);
         
-        let replyText = "";
-        if (isMeanImage) {
-          replyText = `Please don't send me mean memes. Let's keep our conversation kind and friendly! 😊`;
-        } else {
-          replyText = `Wow, that looks so cool! Thanks for sharing! 🌟`;
-        }
+        setTimeout(() => {
+          setIsTyping(false);
+          
+          let replyText = "";
+          if (isMeanImage) {
+            replyText = `Please don't send me mean memes. Let's keep our conversation kind and friendly! 😊`;
+          } else {
+            replyText = `Wow, that looks so cool! Thanks for sharing! 🌟`;
+          }
 
-        const replyId = `${contactId}_contact_${Date.now()}`;
-        const replyMsg = {
-          id: replyId,
-          text: replyText,
-          sender: 'contact',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
+          const replyId = `${contactId}_contact_${Date.now()}`;
+          const replyMsg = {
+            id: replyId,
+            text: replyText,
+            sender: 'contact',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
 
-        setMessages(prev => ({
-          ...prev,
-          [contactId]: [...(prev[contactId] || []), replyMsg]
-        }));
+          setMessages(prev => ({
+            ...prev,
+            [contactId]: [...(prev[contactId] || []), replyMsg]
+          }));
 
-        // Update profile card info (bring to top of list)
-        setProfiles(prev => prev.map(p => 
-          p.id === contactId 
-            ? { ...p, time: replyMsg.time, lastUpdated: Date.now() } 
-            : p
-        ));
-      }, 1500);
+          setProfiles(prev => prev.map(p => 
+            p.id === contactId 
+              ? { ...p, time: replyMsg.time, lastUpdated: Date.now() } 
+              : p
+          ));
+
+          if (contactId !== '4' && contactId !== '5') {
+            const replySafety = checkMessageSafety(replyText, false);
+            if (replySafety) {
+              setSafetyCategory(replySafety);
+              setNaviSpeechVisible(true);
+              setToxicReceivedCount(prev => prev + 1);
+              const newAlert = {
+                id: `alert_${Date.now()}`,
+                time: 'Just Now',
+                type: 'Received Message Flagged',
+                contact: activeChat ? activeChat.name : 'Unknown',
+                action: 'Navi Alerted'
+              };
+              setSafetyAlertsLog(prev => [newAlert, ...prev]);
+            }
+          }
+        }, 1500);
+      }
     }
   };
 
@@ -1582,7 +1719,7 @@ export default function App() {
     .sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
 
   // Clear unread count when opening a chat
-  const openChat = (profile) => {
+  const openChat = async (profile) => {
     setActiveChat(profile);
     setSelectedProfile(null);
     setNaviSpeechVisible(false);
@@ -1593,9 +1730,18 @@ export default function App() {
     setProfiles(prev => prev.map(p => 
       p.id === profile.id ? { ...p, unread: 0 } : p
     ));
+
+    // Fetch history from Supabase if connected and not simulated
+    if (supabase && !profile.is_simulated) {
+      const history = await fetchChatHistory('7', profile.id);
+      setMessages(prev => ({
+        ...prev,
+        [profile.id]: history
+      }));
+    }
   };
 
-  const handleAddContact = () => {
+  const handleAddContact = async () => {
     if (!newContactName.trim()) {
       Alert.alert("Error", "Please enter a contact name!");
       return;
@@ -1613,12 +1759,18 @@ export default function App() {
       email: `${newContactName.trim().toLowerCase()}@kidsmail.org`,
       phone: 'None',
       bio: newContactBio.trim() || 'New friend!',
-      lastUpdated: Date.now()
+      lastUpdated: Date.now(),
+      is_simulated: false
     };
 
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setProfiles(prev => [newProfile, ...prev]);
     setMessages(prev => ({ ...prev, [newId]: [] }));
+
+    // Upsert to Supabase if connected
+    if (supabase) {
+      await upsertProfile(newProfile);
+    }
 
     // Reset state
     setNewContactName('');
@@ -1636,7 +1788,7 @@ export default function App() {
     }
   }, [activeChat, messages, isTyping]);
 
-  const sendFinalTextMessage = (messageText) => {
+  const sendFinalTextMessage = async (messageText) => {
     if (!activeChat) return;
     const contactId = activeChat.id;
     const now = new Date();
@@ -1669,84 +1821,38 @@ export default function App() {
     setInterceptedText(null);
     setIsBypassReady(false);
 
-    // Trigger auto reply if online or away
-    if (activeChat.status !== 'offline') {
-      setIsTyping(true);
-      
-      setTimeout(async () => {
-        setIsTyping(false);
+    // Send to Supabase if real user
+    if (supabase && !activeChat.is_simulated) {
+      await sendSupabaseMessage('7', contactId, messageText);
+    } else {
+      // Trigger auto reply if online or away (only for simulated contacts)
+      if (activeChat.status !== 'offline') {
+        setIsTyping(true);
         
-        let replyText = "";
-        const userMsgSafety = checkMessageSafety(messageText, true);
-
-        if (userMsgSafety) {
-          // If the child was mean or unsafe, the contact replies with a polite boundary or safe pivot
-          if (userMsgSafety === 'TELL_ADULT') {
-            replyText = "That doesn't sound safe. We should probably ask a trusted adult about this! 👩";
-          } else if (userMsgSafety === 'IGNORE_PIVOT') {
-            replyText = "I don't think we should share private info online. What's your favorite video game? 🎮";
-          } else {
-            replyText = `Please don't call me names. Let's keep our conversation kind and friendly! 😊`;
-          }
-        } else {
-          // Get the default fallback text from the sequential pool
-          const contactReplies = autoReplies[contactId] || ["Received! 👍"];
-          const currentIdx = replyIndices[contactId] || 0;
-          const fallbackText = contactReplies[currentIdx % contactReplies.length];
+        setTimeout(async () => {
+          setIsTyping(false);
           
-          // Increment reply index
-          setReplyIndices(prev => ({
-            ...prev,
-            [contactId]: (prev[contactId] || 0) + 1
-          }));
+          let replyText = "";
+          const userMsgSafety = checkMessageSafety(messageText, true);
 
-          // Generate response using local AI model, falling back to static text if needed
-          const activeMessages = messages[contactId] || [];
-          const currentHistory = [...activeMessages, { text: messageText, sender: 'user' }];
-          replyText = await generateContactResponse(activeChat, currentHistory, fallbackText);
-        }
-
-        const replyId = `${contactId}_contact_${Date.now()}`;
-        
-        const replyMsg = {
-          id: replyId,
-          text: replyText,
-          sender: 'contact',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-
-        setMessages(prev => ({
-          ...prev,
-          [contactId]: [...(prev[contactId] || []), replyMsg]
-        }));
-
-        // Update profile card info (bring to top of list)
-        setProfiles(prev => prev.map(p => 
-          p.id === contactId 
-            ? { ...p, time: replyMsg.time, lastUpdated: Date.now() } 
-            : p
-        ));
-
-        // Scan contact's received message for safety if it's NOT Mommy or Daddy (trusted parents)
-        if (contactId !== '4' && contactId !== '5') {
-          const replySafety = checkMessageSafety(replyText, false);
-          if (replySafety) {
-            setSafetyCategory(replySafety);
-            setNaviSpeechVisible(true);
-            // Increment Parent Insights toxic received count
-            setToxicReceivedCount(prev => prev + 1);
-            // Add incident to safety log
-            const newAlert = {
-              id: `alert_${Date.now()}`,
-              time: 'Just Now',
-              type: 'Received Message Flagged',
-              contact: activeChat ? activeChat.name : 'Unknown',
-              action: 'Navi Alerted'
-            };
-            setSafetyAlertsLog(prev => [newAlert, ...prev]);
+          if (userMsgSafety) {
+            // If the child was mean or unsafe, the contact replies with a polite boundary or safe pivot
+            if (userMsgSafety === 'TELL_ADULT') {
+              replyText = "That doesn't sound safe. We should probably ask a trusted adult about this! 👩";
+            } else if (userMsgSafety === 'IGNORE_PIVOT') {
+              replyText = "I don't think we should share private info online. What's your favorite video game? 🎮";
+            } else {
+              replyText = `Please don't call me names. Let's keep our conversation kind and friendly! 😊`;
+            }
+          } else {
+            // Get the default fallback text from the sequential pool
+                action: 'Navi Alerted'
+              };
+              setSafetyAlertsLog(prev => [newAlert, ...prev]);
+            }
           }
-        }
-      }, 1500);
+        }, 1500);
+      }
     }
   };
 
