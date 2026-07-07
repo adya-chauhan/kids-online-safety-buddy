@@ -27,6 +27,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 import * as ImagePicker from 'expo-image-picker';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { 
   generatePoliteResponse, 
   generateContactReply, 
@@ -40,7 +42,8 @@ import {
   fetchProfiles, 
   fetchChatHistory, 
   sendSupabaseMessage, 
-  subscribeToRealtimeMessages 
+  subscribeToRealtimeMessages,
+  fetchProfileByPhone
 } from './services/SupabaseService';
 
 const initialProfilesData = [
@@ -468,11 +471,22 @@ export default function App() {
   const [messages, setMessages] = useState(initialMessagesData);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Add Contact Modal states
+  // Active User session states
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
+
+  // User Sign In / Registration Form
+  const [regName, setRegName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regRole, setRegRole] = useState('Kid 👧');
+  const [regBio, setRegBio] = useState('');
+
+  // Add Contact Modal states (supporting search by phone number!)
   const [addContactModalVisible, setAddContactModalVisible] = useState(false);
-  const [newContactName, setNewContactName] = useState('');
+  const [searchPhoneQuery, setSearchPhoneQuery] = useState('');
+  const [isSearchingContact, setIsSearchingContact] = useState(false);
+  const [foundContactProfile, setFoundContactProfile] = useState(null);
   const [newContactRole, setNewContactRole] = useState('');
-  const [newContactBio, setNewContactBio] = useState('');
   const [selectedProfile, setSelectedProfile] = useState(null); // Detailed modal
   const [activeChat, setActiveChat] = useState(null); // Chat window view
   const [inputText, setInputText] = useState('');
@@ -517,105 +531,105 @@ export default function App() {
   }, [activeChat]);
 
   useEffect(() => {
-    const initSupabase = async () => {
-      if (!supabase) {
-        console.log('[Supabase] Client not initialized. Running in local simulation mode.');
-        return;
-      }
+    const loadUserAndInitSupabase = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('navi_user_profile');
+        if (stored) {
+          const parsedUser = JSON.parse(stored);
+          setCurrentUser(parsedUser);
+          
+          if (supabase) {
+            console.log('[Supabase] Connecting with user:', parsedUser.name);
+            await upsertProfile(parsedUser);
+            
+            // Fetch profiles
+            const dbProfiles = await fetchProfiles();
+            if (dbProfiles.length > 0) {
+              const filteredDbProfiles = dbProfiles
+                .filter(p => p.id !== parsedUser.id) // Exclude current user
+                .map(p => ({
+                  id: p.id,
+                  name: p.name,
+                  role: p.role,
+                  avatar: require('./assets/avatar_anvi_kid.jpg'), // default avatar
+                  status: 'online',
+                  statusText: p.bio || 'Active',
+                  time: 'Just Now',
+                  unread: 0,
+                  email: p.email,
+                  phone: p.phone,
+                  bio: p.bio,
+                  lastUpdated: new Date(p.last_updated).getTime(),
+                  is_simulated: false
+                }));
 
-      console.log('[Supabase] Connecting...');
-
-      // 1. Register/upsert current user (Pari, id: '7')
-      const currentUser = profiles.find(p => p.id === '7');
-      if (currentUser) {
-        await upsertProfile(currentUser);
-      }
-
-      // 2. Fetch other profiles from Supabase
-      const dbProfiles = await fetchProfiles();
-      if (dbProfiles.length > 0) {
-        const filteredDbProfiles = dbProfiles
-          .filter(p => p.id !== '7') // Exclude current user
-          .map(p => ({
-            id: p.id,
-            name: p.name,
-            role: p.role,
-            avatar: require('./assets/avatar_anvi_kid.jpg'), // default avatar
-            status: 'online',
-            statusText: p.bio || 'Active',
-            time: 'Just Now',
-            unread: 0,
-            email: p.email,
-            phone: p.phone,
-            bio: p.bio,
-            lastUpdated: new Date(p.last_updated).getTime(),
-            is_simulated: false
-          }));
-
-        // Merge (avoid duplicates)
-        setProfiles(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const newProfiles = [...prev];
-          for (const dp of filteredDbProfiles) {
-            if (!existingIds.has(dp.id)) {
-              newProfiles.push(dp);
+              setProfiles(prev => {
+                const existingIds = new Set(prev.map(p => p.id));
+                const newProfiles = [...prev];
+                for (const dp of filteredDbProfiles) {
+                  if (!existingIds.has(dp.id)) {
+                    newProfiles.push(dp);
+                  }
+                }
+                return newProfiles;
+              });
             }
-          }
-          return newProfiles;
-        });
-      }
 
-      // 3. Subscribe to real-time messages sent to current user ('7')
-      const subscription = subscribeToRealtimeMessages('7', (newMsg) => {
-        const senderId = newMsg.sender_id;
-        const now = new Date(newMsg.created_at);
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            // Subscribe to messages
+            const subscription = subscribeToRealtimeMessages(parsedUser.id, (newMsg) => {
+              const senderId = newMsg.sender_id;
+              const now = new Date(newMsg.created_at);
+              const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        const mappedMsg = {
-          id: newMsg.id,
-          text: newMsg.text,
-          sender: 'contact',
-          time: timeStr,
-          image: newMsg.image
-        };
+              const mappedMsg = {
+                id: newMsg.id,
+                text: newMsg.text,
+                sender: 'contact',
+                time: timeStr,
+                image: newMsg.image
+              };
 
-        // Append to messages state
-        setMessages(prev => ({
-          ...prev,
-          [senderId]: [...(prev[senderId] || []), mappedMsg]
-        }));
+              setMessages(prev => ({
+                ...prev,
+                [senderId]: [...(prev[senderId] || []), mappedMsg]
+              }));
 
-        // Scroll to bottom and check safety if currently chatting
-        if (activeChatRef.current && activeChatRef.current.id === senderId) {
-          const safety = checkMessageSafety(newMsg.text, false);
-          if (safety) {
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            setSafetyCategory(safety);
-            setNaviSpeechVisible(true);
-            setToxicReceivedCount(prev => prev + 1);
-            const newAlert = {
-              id: `alert_${Date.now()}`,
-              time: 'Just Now',
-              type: 'Received Message Flagged',
-              contact: activeChatRef.current.name,
-              action: 'Navi Alerted'
+              if (activeChatRef.current && activeChatRef.current.id === senderId) {
+                const safety = checkMessageSafety(newMsg.text, false);
+                if (safety) {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setSafetyCategory(safety);
+                  setNaviSpeechVisible(true);
+                  setToxicReceivedCount(prev => prev + 1);
+                  const newAlert = {
+                    id: `alert_${Date.now()}`,
+                    time: 'Just Now',
+                    type: 'Received Message Flagged',
+                    contact: activeChatRef.current.name,
+                    action: 'Navi Alerted'
+                  };
+                  setSafetyAlertsLog(prev => [newAlert, ...prev]);
+                }
+              } else {
+                setProfiles(prev => prev.map(p => 
+                  p.id === senderId ? { ...p, unread: (p.unread || 0) + 1 } : p
+                ));
+              }
+            });
+
+            return () => {
+              if (subscription) subscription.unsubscribe();
             };
-            setSafetyAlertsLog(prev => [newAlert, ...prev]);
           }
-        } else {
-          // Set unread count for profile card
-          setProfiles(prev => prev.map(p => 
-            p.id === senderId ? { ...p, unread: (p.unread || 0) + 1 } : p
-          ));
         }
-      });
-
-      return () => {
-        if (subscription) subscription.unsubscribe();
-      };
+      } catch (err) {
+        console.error("Error loading user profile:", err);
+      } finally {
+        setIsUserLoading(false);
+      }
     };
 
-    initSupabase();
+    loadUserAndInitSupabase();
   }, []);
 
   useEffect(() => {
@@ -1122,8 +1136,8 @@ export default function App() {
               <Text style={styles.settingsAvatarText}>👤</Text>
             </View>
             <View style={styles.settingsProfileInfo}>
-              <Text style={styles.settingsProfileName}>Alex</Text>
-              <Text style={styles.settingsProfileDesc}>Child Account</Text>
+              <Text style={styles.settingsProfileName}>{currentUser?.name || 'Navi User'}</Text>
+              <Text style={styles.settingsProfileDesc}>{currentUser?.phone ? `+${currentUser.phone}` : 'Child Account'}</Text>
             </View>
           </View>
 
@@ -1150,6 +1164,27 @@ export default function App() {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Logout / Switch Account Option */}
+          <TouchableOpacity 
+            style={[styles.settingsRow, { borderBottomWidth: 0, marginTop: 16, backgroundColor: '#FEE2E2', borderRadius: 16, padding: 16 }]}
+            onPress={async () => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              await AsyncStorage.removeItem('navi_user_profile');
+              setCurrentUser(null);
+              setActiveChat(null);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.settingsRowEmojiBg, { backgroundColor: '#FCA5A5' }]}>
+              <Text style={[styles.settingsRowEmoji, { color: '#DC2626' }]}>🚪</Text>
+            </View>
+            <View style={styles.settingsRowContent}>
+              <Text style={[styles.settingsRowTitle, { color: '#DC2626', fontWeight: '800' }]}>Switch / Log Out Account</Text>
+              <Text style={styles.settingsRowDesc}>Log out of this device to sign in with a different phone number</Text>
+            </View>
+            <Text style={[styles.settingsRowArrow, { color: '#DC2626' }]}>→</Text>
+          </TouchableOpacity>
         </ScrollView>
       </View>
     );
@@ -1415,8 +1450,8 @@ export default function App() {
     setNaviSpeechVisible(false);
 
     // Send to Supabase if real user
-    if (supabase && !activeChat.is_simulated) {
-      await sendSupabaseMessage('7', contactId, text, uri);
+    if (supabase && !activeChat.is_simulated && currentUser) {
+      await sendSupabaseMessage(currentUser.id, contactId, text, uri);
     } else {
       // Trigger auto reply if online or away (only for simulated contacts)
       if (activeChat.status !== 'offline') {
@@ -1732,8 +1767,8 @@ export default function App() {
     ));
 
     // Fetch history from Supabase if connected and not simulated
-    if (supabase && !profile.is_simulated) {
-      const history = await fetchChatHistory('7', profile.id);
+    if (supabase && !profile.is_simulated && currentUser) {
+      const history = await fetchChatHistory(currentUser.id, profile.id);
       setMessages(prev => ({
         ...prev,
         [profile.id]: history
@@ -1741,42 +1776,140 @@ export default function App() {
     }
   };
 
-  const handleAddContact = async () => {
-    if (!newContactName.trim()) {
-      Alert.alert("Error", "Please enter a contact name!");
+  const handleRegisterUser = async () => {
+    if (!regName.trim() || !regPhone.trim()) {
+      Alert.alert("Required Fields", "Please enter both your name and phone number!");
       return;
     }
-    const newId = Date.now().toString();
-    const newProfile = {
-      id: newId,
-      name: newContactName.trim(),
-      role: newContactRole.trim() || 'Friend 👧',
-      avatar: require('./assets/avatar_anvi_kid.jpg'), // default fallback avatar
-      status: 'online',
-      statusText: 'Active',
-      time: 'Just Now',
-      unread: 0,
-      email: `${newContactName.trim().toLowerCase()}@kidsmail.org`,
-      phone: 'None',
-      bio: newContactBio.trim() || 'New friend!',
-      lastUpdated: Date.now(),
-      is_simulated: false
-    };
 
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setProfiles(prev => [newProfile, ...prev]);
-    setMessages(prev => ({ ...prev, [newId]: [] }));
-
-    // Upsert to Supabase if connected
-    if (supabase) {
-      await upsertProfile(newProfile);
+    const cleanPhone = regPhone.replace(/\D/g, '');
+    if (cleanPhone.length < 7) {
+      Alert.alert("Invalid Phone", "Please enter a valid phone number!");
+      return;
     }
 
-    // Reset state
-    setNewContactName('');
-    setNewContactRole('');
-    setNewContactBio('');
+    setIsUserLoading(true);
+    try {
+      if (supabase) {
+        // Check if user already exists
+        const existing = await fetchProfileByPhone(cleanPhone);
+        if (existing) {
+          const userProfile = {
+            id: existing.id,
+            name: existing.name,
+            role: existing.role || 'Kid 👧',
+            phone: cleanPhone,
+            bio: existing.bio || '',
+            avatar_url: existing.avatar_url || '',
+            is_simulated: false
+          };
+          await AsyncStorage.setItem('navi_user_profile', JSON.stringify(userProfile));
+          setCurrentUser(userProfile);
+          Alert.alert("Welcome Back!", `Logged in as ${existing.name}.`);
+        } else {
+          // Create new user profile in Supabase
+          const userProfile = {
+            id: cleanPhone,
+            name: regName.trim(),
+            role: regRole,
+            phone: cleanPhone,
+            bio: regBio.trim(),
+            avatar_url: '',
+            is_simulated: false
+          };
+          await upsertProfile(userProfile);
+          await AsyncStorage.setItem('navi_user_profile', JSON.stringify(userProfile));
+          setCurrentUser(userProfile);
+          Alert.alert("Registration Complete", `Welcome to Navi, ${regName}!`);
+        }
+      } else {
+        const userProfile = {
+          id: cleanPhone,
+          name: regName.trim(),
+          role: regRole,
+          phone: cleanPhone,
+          bio: regBio.trim(),
+          avatar_url: '',
+          is_simulated: false
+        };
+        await AsyncStorage.setItem('navi_user_profile', JSON.stringify(userProfile));
+        setCurrentUser(userProfile);
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Could not complete registration.");
+    } finally {
+      setIsUserLoading(false);
+    }
+  };
+
+  const handleSearchContactByPhone = async () => {
+    if (!searchPhoneQuery.trim()) {
+      Alert.alert("Error", "Please enter a phone number to search!");
+      return;
+    }
+    const cleanQuery = searchPhoneQuery.replace(/\D/g, '');
+    if (cleanQuery.length < 7) {
+      Alert.alert("Invalid Phone", "Please enter a valid phone number!");
+      return;
+    }
+
+    setIsSearchingContact(true);
+    setFoundContactProfile(null);
+
+    try {
+      if (supabase) {
+        const found = await fetchProfileByPhone(cleanQuery);
+        if (found) {
+          // Check if already in our profiles list
+          const alreadyExists = profiles.some(p => p.id === found.id);
+          if (alreadyExists) {
+            Alert.alert("Already Added", `${found.name} is already in your contact list!`);
+            setIsSearchingContact(false);
+            return;
+          }
+
+          setFoundContactProfile({
+            id: found.id,
+            name: found.name,
+            role: found.role || 'Friend 👧',
+            avatar: require('./assets/avatar_anvi_kid.jpg'), // default avatar
+            status: 'online',
+            statusText: found.bio || 'Active',
+            time: 'Just Now',
+            unread: 0,
+            email: found.email || '',
+            phone: found.phone,
+            bio: found.bio || '',
+            lastUpdated: new Date(found.last_updated).getTime(),
+            is_simulated: false
+          });
+        } else {
+          Alert.alert("Not Found", "No user is registered with this phone number on Navi yet.");
+        }
+      } else {
+        Alert.alert("Offline Mode", "Supabase connection is not active. Search is only available online.");
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Failed to search for contact.");
+    } finally {
+      setIsSearchingContact(false);
+    }
+  };
+
+  const handleConfirmAddFoundContact = () => {
+    if (!foundContactProfile) return;
+
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setProfiles(prev => [foundContactProfile, ...prev]);
+    setMessages(prev => ({ ...prev, [foundContactProfile.id]: [] }));
+
+    // Reset states
+    setSearchPhoneQuery('');
+    setFoundContactProfile(null);
     setAddContactModalVisible(false);
+    Alert.alert("Success", `${foundContactProfile.name} added to your chats!`);
   };
 
   // Scroll to bottom when messages or typing status updates
@@ -1822,8 +1955,8 @@ export default function App() {
     setIsBypassReady(false);
 
     // Send to Supabase if real user
-    if (supabase && !activeChat.is_simulated) {
-      await sendSupabaseMessage('7', contactId, messageText);
+    if (supabase && !activeChat.is_simulated && currentUser) {
+      await sendSupabaseMessage(currentUser.id, contactId, messageText);
     } else {
       // Trigger auto reply if online or away (only for simulated contacts)
       if (activeChat.status !== 'offline') {
@@ -2021,6 +2154,134 @@ export default function App() {
       }
     ]
   };
+
+  if (isUserLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' }}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={{ marginTop: 12, fontSize: 15, fontWeight: '600', color: '#475569' }}>Loading Navi Profile...</Text>
+      </View>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+        <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center' }}>
+          
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <Image 
+              source={require('./assets/navi_serious.png')} 
+              style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 16 }} 
+            />
+            <Text style={{ fontSize: 28, fontWeight: '900', color: '#1E3A8A', textAlign: 'center' }}>Welcome to Navi! 🛡️</Text>
+            <Text style={{ fontSize: 15, color: '#64748B', textAlign: 'center', marginTop: 8, paddingHorizontal: 16 }}>
+              Navi is your online safety buddy. Let's create your profile to start chatting with friends safely!
+            </Text>
+          </View>
+
+          <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#E2E8F0', elevation: 2 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Your Name *</Text>
+            <TextInput
+              style={{
+                height: 48,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                paddingHorizontal: 16,
+                fontSize: 15,
+                color: '#1E293B',
+                marginBottom: 16,
+                backgroundColor: '#F8FAFC'
+              }}
+              placeholder="Enter your name (e.g. Pari)"
+              placeholderTextColor="#94A3B8"
+              value={regName}
+              onChangeText={setRegName}
+            />
+
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Phone Number *</Text>
+            <TextInput
+              style={{
+                height: 48,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                paddingHorizontal: 16,
+                fontSize: 15,
+                color: '#1E293B',
+                marginBottom: 16,
+                backgroundColor: '#F8FAFC'
+              }}
+              placeholder="Enter phone number (e.g. 555-0199)"
+              placeholderTextColor="#94A3B8"
+              keyboardType="phone-pad"
+              value={regPhone}
+              onChangeText={setRegPhone}
+            />
+
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Account Type</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+              {['Kid 👧', 'Parent 👨', 'Brother 👦'].map((role) => (
+                <TouchableOpacity
+                  key={role}
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: regRole === role ? '#2563EB' : '#E2E8F0',
+                    backgroundColor: regRole === role ? '#EFF6FF' : '#FFFFFF',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}
+                  onPress={() => setRegRole(role)}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: regRole === role ? '#2563EB' : '#475569' }}>
+                    {role}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Short Bio</Text>
+            <TextInput
+              style={{
+                height: 48,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                paddingHorizontal: 16,
+                fontSize: 15,
+                color: '#1E293B',
+                marginBottom: 24,
+                backgroundColor: '#F8FAFC'
+              }}
+              placeholder="Loves painting and coding! 🎨💻"
+              placeholderTextColor="#94A3B8"
+              value={regBio}
+              onChangeText={setRegBio}
+            />
+
+            <TouchableOpacity 
+              style={{
+                height: 48,
+                backgroundColor: '#2563EB',
+                borderRadius: 12,
+                justifyContent: 'center',
+                alignItems: 'center',
+                elevation: 2
+              }} 
+              onPress={handleRegisterUser}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>Start Using Navi 🛡️</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <View style={styles.safeArea}>
@@ -2680,55 +2941,59 @@ export default function App() {
               </View>
 
               <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 20, color: '#1E3A8A', textAlign: 'center' }}>
-                ➕ Add New Contact
+                ➕ Add Contact by Phone Number
               </Text>
               
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Name *</Text>
-              <TextInput
-                style={[styles.chatInput, { flex: 0, width: '100%', marginBottom: 16, marginRight: 0 }]}
-                placeholder="Enter name (e.g. Alex)"
-                placeholderTextColor="#6F6D83"
-                value={newContactName}
-                onChangeText={setNewContactName}
-              />
-              
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Role (e.g. Friend 👧, Brother 👦, Teacher 👩)</Text>
-              <TextInput
-                style={[styles.chatInput, { flex: 0, width: '100%', marginBottom: 16, marginRight: 0 }]}
-                placeholder="Enter role (default: Friend 👧)"
-                placeholderTextColor="#6F6D83"
-                value={newContactRole}
-                onChangeText={setNewContactRole}
-              />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Search by Phone Number *</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                <TextInput
+                  style={[styles.chatInput, { flex: 1, height: 44, marginRight: 0 }]}
+                  placeholder="Enter phone number (e.g. 555-0199)"
+                  placeholderTextColor="#6F6D83"
+                  keyboardType="phone-pad"
+                  value={searchPhoneQuery}
+                  onChangeText={setSearchPhoneQuery}
+                />
+                <TouchableOpacity 
+                  style={[styles.sendButton, { width: 80, height: 44, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
+                  onPress={handleSearchContactByPhone}
+                >
+                  {isSearchingContact ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Search</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
 
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Bio (Personality profile for simulations)</Text>
-              <TextInput
-                style={[styles.chatInput, { flex: 0, width: '100%', marginBottom: 24, marginRight: 0 }]}
-                placeholder="Enter bio (e.g. Loves video games and soccer! ⚽)"
-                placeholderTextColor="#6F6D83"
-                value={newContactBio}
-                onChangeText={setNewContactBio}
-              />
+              {foundContactProfile && (
+                <View style={{ backgroundColor: '#EFF6FF', padding: 16, borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, borderColor: '#3B82F6', marginBottom: 20 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#1E3A8A', marginBottom: 8 }}>Found User! ✅</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>Name: {foundContactProfile.name}</Text>
+                  <Text style={{ fontSize: 13, color: '#475569' }}>Role: {foundContactProfile.role}</Text>
+                  <Text style={{ fontSize: 12, color: '#64748B', fontStyle: 'italic', marginTop: 4 }}>"{foundContactProfile.bio}"</Text>
+                </View>
+              )}
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
                 <TouchableOpacity 
                   style={[styles.actionBtnSecondary, { flex: 1, height: 48 }]} 
                   onPress={() => {
                     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setSearchPhoneQuery('');
+                    setFoundContactProfile(null);
                     setAddContactModalVisible(false);
-                    setNewContactName('');
-                    setNewContactRole('');
-                    setNewContactBio('');
                   }}
                 >
                   <Text style={styles.actionBtnSecondaryText}>Cancel</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  style={[styles.sendButton, { flex: 1, height: 48, backgroundColor: '#2563EB' }]} 
-                  onPress={handleAddContact}
+                  style={[styles.sendButton, { flex: 1, height: 48, backgroundColor: foundContactProfile ? '#10B981' : '#94A3B8' }]} 
+                  onPress={handleConfirmAddFoundContact}
+                  disabled={!foundContactProfile}
                 >
-                  <Text style={styles.sendButtonText}>Add Contact</Text>
+                  <Text style={styles.sendButtonText}>Add to Chats</Text>
                 </TouchableOpacity>
               </View>
             </View>

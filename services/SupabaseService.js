@@ -16,6 +16,7 @@ export const supabase = (supabaseUrl && supabaseAnonKey)
  */
 export const upsertProfile = async (profile) => {
   if (!supabase) return null;
+  const cleanPhone = profile.phone ? profile.phone.replace(/\D/g, '') : '';
   const { data, error } = await supabase
     .from('profiles')
     .upsert({
@@ -24,7 +25,7 @@ export const upsertProfile = async (profile) => {
       role: profile.role,
       bio: profile.bio,
       email: profile.email || '',
-      phone: profile.phone || '',
+      phone: cleanPhone,
       avatar_url: profile.avatar_url || '',
       last_updated: new Date().toISOString()
     })
@@ -35,6 +36,25 @@ export const upsertProfile = async (profile) => {
     return null;
   }
   return data ? data[0] : null;
+};
+
+/**
+ * Fetch profile by phone number (cleans phone number of formatting)
+ */
+export const fetchProfileByPhone = async (phone) => {
+  if (!supabase) return null;
+  const cleanPhone = phone.replace(/\D/g, '');
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('phone', cleanPhone)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[Supabase] Error fetching profile by phone:', error.message);
+    return null;
+  }
+  return data;
 };
 
 /**
