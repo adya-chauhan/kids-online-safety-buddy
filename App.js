@@ -1846,6 +1846,57 @@ export default function App() {
             }
           } else {
             // Get the default fallback text from the sequential pool
+            const contactReplies = autoReplies[contactId] || ["Received! 👍"];
+            const currentIdx = replyIndices[contactId] || 0;
+            const fallbackText = contactReplies[currentIdx % contactReplies.length];
+            
+            // Increment reply index
+            setReplyIndices(prev => ({
+              ...prev,
+              [contactId]: (prev[contactId] || 0) + 1
+            }));
+
+            // Generate response using local AI model, falling back to static text if needed
+            const activeMessages = messages[contactId] || [];
+            const currentHistory = [...activeMessages, { text: messageText, sender: 'user' }];
+            replyText = await generateContactResponse(activeChat, currentHistory, fallbackText);
+          }
+
+          const replyId = `${contactId}_contact_${Date.now()}`;
+          
+          const replyMsg = {
+            id: replyId,
+            text: replyText,
+            sender: 'contact',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+
+          setMessages(prev => ({
+            ...prev,
+            [contactId]: [...(prev[contactId] || []), replyMsg]
+          }));
+
+          // Update profile card info (bring to top of list)
+          setProfiles(prev => prev.map(p => 
+            p.id === contactId 
+              ? { ...p, time: replyMsg.time, lastUpdated: Date.now() } 
+              : p
+          ));
+
+          // Scan contact's received message for safety if it's NOT Mommy or Daddy (trusted parents)
+          if (contactId !== '4' && contactId !== '5') {
+            const replySafety = checkMessageSafety(replyText, false);
+            if (replySafety) {
+              setSafetyCategory(replySafety);
+              setNaviSpeechVisible(true);
+              // Increment Parent Insights toxic received count
+              setToxicReceivedCount(prev => prev + 1);
+              // Add incident to safety log
+              const newAlert = {
+                id: `alert_${Date.now()}`,
+                time: 'Just Now',
+                type: 'Received Message Flagged',
+                contact: activeChat ? activeChat.name : 'Unknown',
                 action: 'Navi Alerted'
               };
               setSafetyAlertsLog(prev => [newAlert, ...prev]);
