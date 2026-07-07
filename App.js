@@ -16,8 +16,14 @@ import {
   PanResponder,
   Alert,
   ActivityIndicator,
-  Linking
+  Linking,
+  LayoutAnimation,
+  UIManager
 } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 import * as ImagePicker from 'expo-image-picker';
 
@@ -484,13 +490,30 @@ export default function App() {
     { id: '2', time: 'Yesterday, 3:46 PM', type: 'Received Message Flagged', contact: 'Sara', action: 'Alerted' },
     { id: '3', time: '2 days ago, 1:12 PM', type: 'Sent Message Intercepted', contact: 'Anvi', action: 'Listened' }
   ]);
-  const [parentUnlocked, setParentUnlocked] = useState(false);
-  const [parentPinInput, setParentPinInput] = useState("");
+  const [naviMascotImageState, setNaviMascotImageState] = useState('serious');
+  const [naviFeedbackMessage, setNaviFeedbackMessage] = useState(null);
+  const naviMascotAnim = useRef(new Animated.Value(0)).current;
+
   const naviAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (safetyCategory !== null) {
       setNaviRating(null);
+      setNaviMascotImageState('serious');
+      setNaviFeedbackMessage(null);
+      Animated.spring(naviMascotAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 60,
+        useNativeDriver: true
+      }).start();
+      setNaviSpeechVisible(true);
+    } else {
+      Animated.timing(naviMascotAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true
+      }).start();
     }
   }, [safetyCategory]);
 
@@ -609,7 +632,7 @@ export default function App() {
         <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
           {/* Intro Mascot Card */}
           <View style={styles.safetyIntroCard}>
-            <Image source={require('./assets/mascot_navi.jpg')} style={styles.safetyIntroMascot} />
+            <Image source={require('./assets/navi_thumbs_up.png')} style={styles.safetyIntroMascot} />
             <View style={styles.safetyIntroTextWrapper}>
               <Text style={styles.safetyIntroTitle}>Meet Navi!</Text>
               <Text style={styles.safetyIntroBody}>
@@ -663,55 +686,29 @@ export default function App() {
     );
   };
 
-  const handleUnlockParent = () => {
-    if (parentPinInput === "1234") {
-      setParentUnlocked(true);
-      setParentPinInput("");
-    } else {
-      Alert.alert("Incorrect PIN", "Hint: The default Parent PIN is 1234");
-    }
-  };
-
   // Mock Parental Insights Dashboard Screen
   const renderDashboardScreen = () => {
-    if (!parentUnlocked) {
-      return (
-        <View style={styles.tabContentContainer}>
-          <View style={styles.headerVertical}>
-            <View style={styles.headerBottomRow}>
-              <Text style={styles.headerTitle}>Parent Area</Text>
-            </View>
-          </View>
-          <View style={[styles.scrollContent, styles.parentLockWrapper]}>
-            <Text style={styles.parentLockIcon}>🔒</Text>
-            <Text style={styles.parentLockTitle}>FamiSafe Parent Portal</Text>
-            <Text style={styles.parentLockDesc}>
-              Enter your Parent PIN to access cyberbullying insights, alert logs, and safety reports.
-            </Text>
-            
-            <TextInput
-              style={styles.parentPinInput}
-              placeholder="Enter 4-Digit PIN"
-              placeholderTextColor="#94A3B8"
-              keyboardType="number-pad"
-              secureTextEntry={true}
-              maxLength={4}
-              value={parentPinInput}
-              onChangeText={setParentPinInput}
-            />
-            
-            <TouchableOpacity style={styles.parentUnlockBtn} onPress={handleUnlockParent}>
-              <Text style={styles.parentUnlockBtnText}>Unlock Insights</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.parentPinHint}>Default Test PIN: 1234</Text>
-          </View>
-        </View>
-      );
-    }
-
     const totalViolations = naviPopupCount + toxicReceivedCount;
     const safetyScore = totalViolations === 0 ? 100 : Math.max(20, Math.round(100 - (totalViolations * 10)));
+
+    // Status config
+    let statusLabel = "ACCOUNT STATUS: NORMAL";
+    let statusColor = "#10B981"; // Emerald
+    let statusBg = "#ECFDF5";
+    
+    if (safetyScore < 50) {
+      statusLabel = "ACCOUNT STATUS: ACTION REQUIRED";
+      statusColor = "#EF4444"; // Rose
+      statusBg = "#FEF2F2";
+    } else if (safetyScore < 80) {
+      statusLabel = "ACCOUNT STATUS: ATTENTION ADVISED";
+      statusColor = "#F59E0B"; // Amber
+      statusBg = "#FFFBEB";
+    }
+
+    // Receptiveness score calculation
+    const totalInterventions = naviListenCount + naviBypassCount + naviAlertAdultCount;
+    const listenRate = totalInterventions === 0 ? 100 : Math.round((naviListenCount / Math.max(1, naviListenCount + naviBypassCount)) * 100);
 
     return (
       <View style={styles.tabContentContainer}>
@@ -719,12 +716,6 @@ export default function App() {
         <View style={styles.headerVertical}>
           <View style={styles.headerBottomRow}>
             <Text style={[styles.headerTitle, { fontSize: 24, flex: 1, marginRight: 8 }]} numberOfLines={1}>Insights Dashboard</Text>
-            <TouchableOpacity 
-              style={styles.parentLockBadge}
-              onPress={() => setParentUnlocked(false)}
-            >
-              <Text style={styles.parentLockBadgeText}>🔒 Lock</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -732,81 +723,137 @@ export default function App() {
           {/* Safety Rating Overview Card */}
           <View style={styles.safetyOverviewCard}>
             <View style={styles.safetyScoreWrapper}>
-              <View style={styles.safetyScoreCircle}>
+              <View style={[styles.safetyScoreCircle, { borderColor: statusColor }]}>
                 <Text style={styles.safetyScoreNum}>{safetyScore}%</Text>
               </View>
-              <Text style={styles.safetyScoreLabel}>Safety Rating</Text>
+              <Text style={styles.safetyScoreLabel}>Safety Index</Text>
             </View>
             <View style={styles.safetyOverviewText}>
-              <Text style={styles.safetyOverviewTitle}>
-                {safetyScore >= 80 ? '🟢 Child is Safe' : safetyScore >= 50 ? '🟡 Moderate Risk' : '🔴 Immediate Attention'}
-              </Text>
+              <View style={[styles.statusBadge, { backgroundColor: statusBg, borderColor: statusColor }]}>
+                <Text style={[styles.statusBadgeText, { color: statusColor }]}>{statusLabel}</Text>
+              </View>
               <Text style={styles.safetyOverviewDesc}>
                 {safetyScore >= 80 
-                  ? 'Alex has maintained a highly positive chat history. Cyberbullying exposure is minimal.'
+                  ? 'Child has maintained a highly positive chat history. Cyberbullying exposure is minimal.'
                   : safetyScore >= 50 
-                    ? 'Some mean messages detected. Consider reviewing the alerts and chatting with Alex.'
-                    : 'Frequent toxic interactions flagged. We recommend immediate parental guidance.'}
+                    ? 'Some offensive messages detected. Consider reviewing logs and scheduling a safety discussion.'
+                    : 'Frequent toxic interactions flagged. Immediate parental guidance is recommended.'}
               </Text>
             </View>
           </View>
 
-          {/* Quick Metrics - Single Box */}
-          <Text style={styles.updatesSectionLabel}>Violations Summary</Text>
+          {/* Quick Metrics - Activity Summary */}
+          <Text style={styles.updatesSectionLabel}>Activity Summary</Text>
           <View style={styles.singleMetricsCard}>
             <View style={styles.singleMetricItem}>
-              <Text style={styles.metricEmoji}>🛡️</Text>
               <Text style={styles.metricNum}>{naviPopupCount}</Text>
-              <Text style={styles.metricLabel}>Navi Popups</Text>
+              <Text style={styles.metricLabel}>Coaching Interventions</Text>
             </View>
             <View style={styles.metricSeparator} />
             <View style={styles.singleMetricItem}>
-              <Text style={styles.metricEmoji}>🚨</Text>
               <Text style={styles.metricNum}>{toxicReceivedCount}</Text>
-              <Text style={styles.metricLabel}>Mean Recv'd</Text>
+              <Text style={styles.metricLabel}>Flagged Incoming Messages</Text>
             </View>
           </View>
 
-          {/* Recent Incident Log under "Choices" */}
-          <Text style={styles.updatesSectionLabel}>Choices</Text>
-          {safetyAlertsLog.length === 0 ? (
-            <View style={styles.emptyLogCard}>
-              <Text style={styles.emptyLogText}>No cyberbullying incidents flagged yet. 👍</Text>
+          {/* Intervention Outcomes */}
+          <Text style={styles.updatesSectionLabel}>Intervention Outcomes</Text>
+          <View style={styles.choicesRow}>
+            <View style={[styles.choiceBox, styles.choiceBoxBypass]}>
+              <Text style={[styles.choiceNum, styles.choiceTextBypass]}>{naviBypassCount}</Text>
+              <Text style={styles.choiceLabel}>Bypassed</Text>
             </View>
-          ) : (
-            safetyAlertsLog.map((alert) => {
-              const isSent = alert.type.includes('Sent');
-              return (
-                <View key={alert.id} style={styles.alertLogCard}>
-                  <View style={styles.alertLogHeader}>
-                    <View style={styles.alertLogHeaderLeft}>
-                      <Text style={styles.alertLogEmoji}>{isSent ? '📤' : '📥'}</Text>
-                      <View>
-                        <Text style={styles.alertLogTitle}>{alert.type}</Text>
-                        <Text style={styles.alertLogTime}>{alert.time}</Text>
-                      </View>
-                    </View>
-                    <View style={[
-                      styles.alertBadge,
-                      alert.action.includes('Bypassed') ? styles.alertBadgeBypass :
-                      alert.action.includes('Listen') ? styles.alertBadgeListen :
-                      alert.action.includes('Alerted') ? styles.alertBadgeAdult : {}
-                    ]}>
-                      <Text style={[
-                        styles.alertBadgeText,
-                        alert.action.includes('Bypassed') ? styles.alertBadgeTextBypass :
-                        alert.action.includes('Listen') ? styles.alertBadgeTextListen :
-                        alert.action.includes('Alerted') ? styles.alertBadgeTextAdult : {}
-                      ]}>{alert.action}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.alertLogBody}>
-                    <Text style={styles.alertContactText}>Contact: <Text style={{fontWeight: '700'}}>{alert.contact}</Text></Text>
-                  </View>
-                </View>
-              );
-            })
-          )}
+            <View style={[styles.choiceBox, styles.choiceBoxListen]}>
+              <Text style={[styles.choiceNum, styles.choiceTextListen]}>{naviListenCount}</Text>
+              <Text style={styles.choiceLabel}>Listened</Text>
+            </View>
+            <View style={[styles.choiceBox, styles.choiceBoxAlert]}>
+              <Text style={[styles.choiceNum, styles.choiceTextAlert]}>{naviAlertAdultCount}</Text>
+              <Text style={styles.choiceLabel}>Alerted</Text>
+            </View>
+          </View>
+
+          {/* Outcome Analysis / Receptiveness */}
+          <Text style={styles.updatesSectionLabel}>Coaching Effectiveness</Text>
+          <View style={styles.statsCard}>
+            <View style={styles.statsRowBetween}>
+              <Text style={styles.statsLabelText}>Coaching Receptiveness</Text>
+              <Text style={styles.statsValueHighlight}>{listenRate}%</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${listenRate}%`, backgroundColor: '#10B981' }]} />
+            </View>
+            <Text style={styles.statsSubDesc}>
+              Percentage of times the child decided to use Navi's polite response suggestions instead of bypassing the warning.
+            </Text>
+          </View>
+
+          {/* Category Breakdown */}
+          <Text style={styles.updatesSectionLabel}>Intervention Types</Text>
+          <View style={styles.statsCard}>
+            {/* Cyberbullying */}
+            <View style={styles.categoryItem}>
+              <View style={styles.statsRowBetween}>
+                <Text style={styles.categoryName}>Mean Speech/Bullying</Text>
+                <Text style={styles.categoryCount}>2</Text>
+              </View>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: '66%', backgroundColor: '#EF4444' }]} />
+              </View>
+            </View>
+            
+            {/* Privacy Guard */}
+            <View style={[styles.categoryItem, { marginTop: 12 }]}>
+              <View style={styles.statsRowBetween}>
+                <Text style={styles.categoryName}>Private Info Sharing</Text>
+                <Text style={styles.categoryCount}>1</Text>
+              </View>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: '33%', backgroundColor: '#F59E0B' }]} />
+              </View>
+            </View>
+
+            {/* Severe Threats */}
+            <View style={[styles.categoryItem, { marginTop: 12 }]}>
+              <View style={styles.statsRowBetween}>
+                <Text style={styles.categoryName}>Severe Safety Alerts</Text>
+                <Text style={styles.categoryCount}>0</Text>
+              </View>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: '0%', backgroundColor: '#3B82F6' }]} />
+              </View>
+            </View>
+          </View>
+
+          {/* Weekly Trend Chart */}
+          <Text style={styles.updatesSectionLabel}>Weekly Alert History</Text>
+          <View style={styles.chartCard}>
+            <View style={styles.chartBarsContainer}>
+              <View style={styles.chartBarItem}>
+                <View style={[styles.chartBarFill, { height: 20, backgroundColor: '#64748B' }]} />
+                <Text style={styles.chartBarDay}>M</Text>
+              </View>
+              <View style={styles.chartBarItem}>
+                <View style={[styles.chartBarFill, { height: 40, backgroundColor: '#64748B' }]} />
+                <Text style={styles.chartBarDay}>T</Text>
+              </View>
+              <View style={styles.chartBarItem}>
+                <View style={[styles.chartBarFill, { height: 10, backgroundColor: '#64748B' }]} />
+                <Text style={styles.chartBarDay}>W</Text>
+              </View>
+              <View style={styles.chartBarItem}>
+                <View style={[styles.chartBarFill, { height: 60, backgroundColor: '#EF4444' }]} />
+                <Text style={styles.chartBarDay}>T</Text>
+              </View>
+              <View style={styles.chartBarItem}>
+                <View style={[styles.chartBarFill, { height: 30, backgroundColor: '#64748B' }]} />
+                <Text style={styles.chartBarDay}>F</Text>
+              </View>
+            </View>
+            <Text style={styles.statsSubDesc}>
+              Daily interventions count showing safety warnings triggered throughout the week.
+            </Text>
+          </View>
         </ScrollView>
       </View>
     );
@@ -1006,11 +1053,34 @@ export default function App() {
       [contactId]: [...(prev[contactId] || []), newMsg]
     }));
 
-    // Clear safety category and hide Navi speech bubble and bypass states
-    setSafetyCategory(null);
-    setNaviSpeechVisible(false);
+    // Trigger thumbs up mood and success message
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setNaviMascotImageState('thumbs_up');
+    setNaviFeedbackMessage("Awesome! You made a kind and safe choice. Way to go! 👍");
     setInterceptedText(null);
     setIsBypassReady(false);
+
+    // Wait 2.5 seconds, then animate exit and clean up
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(naviAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true
+        }),
+        Animated.timing(naviMascotAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true
+        })
+      ]).start(() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setSafetyCategory(null);
+        setNaviSpeechVisible(false);
+        setNaviFeedbackMessage(null);
+        setNaviMascotImageState('serious');
+      });
+    }, 2500);
   };
 
   const generateLocalModelResponse = async (contextText) => {
@@ -1044,6 +1114,7 @@ export default function App() {
   };
 
   const handleSelectPoliteSuggestion = (suggestionText) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     sendSafeFeedback(suggestionText);
     setPendingImage(null);
     setPendingText(null);
@@ -1298,8 +1369,26 @@ export default function App() {
       sendFinalTextMessage(pendingText);
       setPendingText(null);
     }
-    setSafetyCategory(null);
-    setNaviSpeechVisible(false);
+
+    // Animate exit smoothly instead of unmounting instantly
+    Animated.parallel([
+      Animated.timing(naviAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true
+      }),
+      Animated.timing(naviMascotAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true
+      })
+    ]).start(() => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setSafetyCategory(null);
+      setNaviSpeechVisible(false);
+      setNaviFeedbackMessage(null);
+      setNaviMascotImageState('serious');
+    });
   };
 
   const handleListenToSuggestions = () => {
@@ -1312,8 +1401,14 @@ export default function App() {
       textToAnalyze = pendingText;
     } else if (pendingImage) {
       textToAnalyze = pendingImage.text || "mean photo";
+    } else {
+      // Received message case: use the last message in the chat history
+      const activeMessages = messages[activeChat.id] || [];
+      textToAnalyze = activeMessages.length > 0 ? activeMessages[activeMessages.length - 1].text : "";
     }
 
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setNaviMascotImageState('thumbs_up');
     setSuggestionsVisible(true);
     generatePoliteSuggestions(textToAnalyze);
   };
@@ -1326,9 +1421,6 @@ export default function App() {
     const contactId = activeChat.id;
     const activeMessages = messages[contactId] || [];
     const lastMsgText = activeMessages.length > 0 ? activeMessages[activeMessages.length - 1].text : "";
-
-    setSafetyCategory(null);
-    setNaviSpeechVisible(false);
 
     // Construct the automatic report text
     let reportText = "";
@@ -1358,7 +1450,7 @@ export default function App() {
         sender: 'user',
         time: timeStr
       }];
-
+      
       // Send to Daddy
       const daddyMsgId = `daddy_report_${Date.now()}`;
       updated['5'] = [...(updated['5'] || []), {
@@ -1367,7 +1459,7 @@ export default function App() {
         sender: 'user',
         time: timeStr
       }];
-
+      
       return updated;
     });
 
@@ -1378,14 +1470,40 @@ export default function App() {
         : p
     ));
 
-    // Show a success confirmation alert
-    alert(`Navi has automatically reported this to Mommy and Daddy! 🛡️`);
+    // Trigger thumbs up mood and success message
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setNaviMascotImageState('thumbs_up');
+    setNaviFeedbackMessage("Awesome! You told a parent. Navi is super proud of you! 👍");
+    setInterceptedText(null);
+    setIsBypassReady(false);
 
-    // Open Mommy's chat screen so the child sees the report was sent and can chat
-    const mommyProfile = profiles.find(p => p.id === '4');
-    if (mommyProfile) {
-      openChat(mommyProfile);
-    }
+    // Wait 2.5 seconds, then animate exit, clean up, and open Mommy's chat
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(naviAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true
+        }),
+        Animated.timing(naviMascotAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true
+        })
+      ]).start(() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setSafetyCategory(null);
+        setNaviSpeechVisible(false);
+        setNaviFeedbackMessage(null);
+        setNaviMascotImageState('serious');
+        
+        // Open Mommy's chat screen so the child sees the report was sent and can chat
+        const mommyProfile = profiles.find(p => p.id === '4');
+        if (mommyProfile) {
+          openChat(mommyProfile);
+        }
+      });
+    }, 2500);
   };
 
   const messageMommyAction = () => {
@@ -1885,7 +2003,12 @@ export default function App() {
                   pointerEvents={naviSpeechVisible ? 'auto' : 'none'} 
                   style={[styles.naviSpeechBubble, animatedSpeechStyle]}
                 >
-                  {suggestionsVisible ? (
+                  {naviFeedbackMessage ? (
+                    <>
+                      <Text style={styles.naviSpeechTitle}>Success!</Text>
+                      <Text style={styles.naviSpeechText}>{naviFeedbackMessage}</Text>
+                    </>
+                  ) : suggestionsVisible ? (
                     <>
                       <Text style={styles.naviSpeechTitle}>💬 Choose a reply:</Text>
                       {isGeneratingSuggestions ? (
@@ -1896,7 +2019,10 @@ export default function App() {
                             <TouchableOpacity 
                               key={idx}
                               style={styles.naviOptionBtn}
-                              onPress={() => handleSelectPoliteSuggestion(suggestion)}
+                              onPress={() => {
+                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                handleSelectPoliteSuggestion(suggestion);
+                              }}
                             >
                               <Text style={styles.naviOptionText}>{suggestion}</Text>
                             </TouchableOpacity>
@@ -1904,6 +2030,8 @@ export default function App() {
                           <TouchableOpacity 
                             style={[styles.naviOptionBtn, { backgroundColor: '#F3F4F6', borderColor: '#D1D5DB', marginTop: 4 }]}
                             onPress={() => {
+                              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                              setNaviMascotImageState('serious');
                               setSuggestionsVisible(false);
                               setPoliteSuggestions([]);
                             }}
@@ -1915,11 +2043,15 @@ export default function App() {
                     </>
                   ) : (
                     <>
-                      <Text style={styles.naviSpeechTitle}>🛡️ Reconsider Your Choice:</Text>
+                      <Text style={styles.naviSpeechTitle}>
+                        {pendingText || pendingImage ? "🛡️ Reconsider Choice" : "🛡️ Navi Safety Alert"}
+                      </Text>
                       <Text style={styles.naviSpeechText}>
                         {pendingImage 
-                          ? "That image looks a bit mean or hurtful. Please reconsider before sending it."
-                          : "That message looks a bit mean or hurtful. Please reconsider before sending it."}
+                          ? "This image looks mean. Reconsider sending?"
+                          : pendingText 
+                            ? "This message looks mean. Reconsider sending?"
+                            : "That message looks mean. How should we reply?"}
                       </Text>
                       
                       {/* Safety Options */}
@@ -1927,71 +2059,97 @@ export default function App() {
                         style={styles.naviOptionBtn}
                         onPress={handleIgnoreAndSend}
                       >
-                        <Text style={styles.naviOptionText}>🔀 Ignore & send anyway</Text>
+                        <Text style={styles.naviOptionText}>
+                          {pendingText || pendingImage ? "🔀 Send anyway" : "❌ Dismiss"}
+                        </Text>
                       </TouchableOpacity>
                       
                       <TouchableOpacity 
                         style={styles.naviOptionBtn}
                         onPress={handleListenToSuggestions}
                       >
-                        <Text style={styles.naviOptionText}>💬 Listen to suggestions</Text>
+                        <Text style={styles.naviOptionText}>
+                          {pendingText || pendingImage ? "💬 See suggestions" : "💬 Reply politely"}
+                        </Text>
                       </TouchableOpacity>
                       
                       <TouchableOpacity 
                         style={[styles.naviOptionBtn, styles.naviOptionBtnAlert]}
                         onPress={handleNaviTellAdult}
                       >
-                        <Text style={[styles.naviOptionText, styles.naviOptionTextAlert]}>❤️ Alert an adult</Text>
+                        <Text style={[styles.naviOptionText, styles.naviOptionTextAlert]}>❤️ Tell an adult</Text>
                       </TouchableOpacity>
                     </>
                   )}
 
                   {/* Navi Feedback Rating Widget */}
-                  <View style={styles.naviRatingContainer}>
-                    {naviRating === null ? (
-                      <>
-                        <Text style={styles.naviRatingText}>Rate Navi's advice:</Text>
-                        <View style={styles.naviRatingRow}>
-                          <TouchableOpacity 
-                            style={styles.naviRatingBtn} 
-                            onPress={() => {
-                              setNaviRating('up');
-                              Alert.alert("Thank you! 👍", "Navi is happy to help!");
-                            }}
-                          >
-                            <Text style={styles.naviRatingIcon}>👍</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity 
-                            style={styles.naviRatingBtn} 
-                            onPress={() => {
-                              setNaviRating('down');
-                              Alert.alert("Thank you! 👎", "Navi will try to learn and give better tips next time!");
-                            }}
-                          >
-                            <Text style={styles.naviRatingIcon}>👎</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </>
-                    ) : (
-                      <Text style={styles.naviRatingFeedback}>Thanks for rating! 🌟</Text>
-                    )}
-                  </View>
+                  {naviFeedbackMessage && (
+                    <View style={styles.naviRatingContainer}>
+                      {naviRating === null ? (
+                        <>
+                          <Text style={styles.naviRatingText}>Rate Navi's advice:</Text>
+                          <View style={styles.naviRatingRow}>
+                            <TouchableOpacity 
+                              style={styles.naviRatingBtn} 
+                              onPress={() => {
+                                setNaviRating('up');
+                                Alert.alert("Thank you! 👍", "Navi is happy to help!");
+                              }}
+                            >
+                              <Text style={styles.naviRatingIcon}>👍</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                              style={styles.naviRatingBtn} 
+                              onPress={() => {
+                                setNaviRating('down');
+                                Alert.alert("Thank you! 👎", "Navi will try to learn and give better tips next time!");
+                              }}
+                            >
+                              <Text style={styles.naviRatingIcon}>👎</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </>
+                      ) : (
+                        <Text style={styles.naviRatingFeedback}>Thanks for rating! 🌟</Text>
+                      )}
+                    </View>
+                  )}
                 </Animated.View>
 
                 {/* Navi Mascot Trigger Button */}
-                <TouchableOpacity 
-                  style={styles.naviTrigger}
-                  onPress={() => setNaviSpeechVisible(prev => !prev)}
-                  activeOpacity={0.8}
+                <Animated.View
+                  style={{
+                    transform: [
+                      {
+                        scale: naviMascotAnim
+                      },
+                      {
+                        translateY: naviMascotAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [100, 0]
+                        })
+                      }
+                    ],
+                    opacity: naviMascotAnim
+                  }}
                 >
-                  <Image source={require('./assets/mascot_navi.jpg')} style={styles.naviMascotImage} />
-                  {/* Visual badge/notification on Navi */}
-                  {!naviSpeechVisible && (
-                    <View style={styles.naviAlertBadge}>
-                      <Text style={styles.naviAlertText}>?</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.naviTrigger}
+                    onPress={() => setNaviSpeechVisible(prev => !prev)}
+                    activeOpacity={0.8}
+                  >
+                    <Image 
+                      source={naviMascotImageState === 'thumbs_up' ? require('./assets/navi_thumbs_up.png') : require('./assets/navi_serious.png')} 
+                      style={styles.naviMascotImage} 
+                    />
+                    {/* Visual badge/notification on Navi */}
+                    {!naviSpeechVisible && (
+                      <View style={styles.naviAlertBadge}>
+                        <Text style={styles.naviAlertText}>?</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
               </View>
             )}
           </View>
@@ -2724,6 +2882,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    zIndex: 10,
+    elevation: 10,
   },
   chatInput: {
     flex: 1,
@@ -2963,15 +3123,11 @@ const styles = StyleSheet.create({
     bottom: 80,
     right: 16,
     alignItems: 'flex-end',
-    zIndex: 1000,
+    zIndex: 5,
   },
   naviTrigger: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#3B82F6',
+    width: 90,
+    height: 90,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -2979,12 +3135,12 @@ const styles = StyleSheet.create({
     elevation: 4,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
+    marginRight: 0,
   },
   naviMascotImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    resizeMode: 'contain', // Show full head without cropping
   },
   naviAlertBadge: {
     position: 'absolute',
@@ -4603,5 +4759,163 @@ const styles = StyleSheet.create({
     width: 1.5,
     height: 40,
     backgroundColor: '#F1F5F9',
+  },
+  choicesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  choiceBox: {
+    flex: 1,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 4,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  choiceBoxBypass: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
+    borderTopColor: '#EF4444',
+    borderTopWidth: 4,
+  },
+  choiceBoxListen: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
+    borderTopColor: '#10B981',
+    borderTopWidth: 4,
+  },
+  choiceBoxAlert: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
+    borderTopColor: '#3B82F6',
+    borderTopWidth: 4,
+  },
+  choiceNum: {
+    fontSize: 20,
+    fontWeight: '900',
+    marginBottom: 4,
+    marginTop: 4,
+  },
+  choiceTextBypass: {
+    color: '#EF4444',
+  },
+  choiceTextListen: {
+    color: '#10B981',
+  },
+  choiceTextAlert: {
+    color: '#3B82F6',
+  },
+  choiceLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  statsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  statsRowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statsLabelText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  statsValueHighlight: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#10B981',
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  statsSubDesc: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 15,
+    marginTop: 4,
+  },
+  categoryItem: {
+    width: '100%',
+  },
+  categoryName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  categoryCount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  chartCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  chartBarsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+    height: 100,
+    paddingTop: 10,
+    marginBottom: 10,
+  },
+  chartBarItem: {
+    alignItems: 'center',
+    width: 32,
+  },
+  chartBarFill: {
+    width: 12,
+    borderRadius: 6,
+  },
+  chartBarDay: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    marginTop: 6,
   },
 });
