@@ -458,6 +458,12 @@ export default function App() {
   const [profiles, setProfiles] = useState(initialProfilesData);
   const [messages, setMessages] = useState(initialMessagesData);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Add Contact Modal states
+  const [addContactModalVisible, setAddContactModalVisible] = useState(false);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactRole, setNewContactRole] = useState('');
+  const [newContactBio, setNewContactBio] = useState('');
   const [selectedProfile, setSelectedProfile] = useState(null); // Detailed modal
   const [activeChat, setActiveChat] = useState(null); // Chat window view
   const [inputText, setInputText] = useState('');
@@ -1589,6 +1595,38 @@ export default function App() {
     ));
   };
 
+  const handleAddContact = () => {
+    if (!newContactName.trim()) {
+      Alert.alert("Error", "Please enter a contact name!");
+      return;
+    }
+    const newId = Date.now().toString();
+    const newProfile = {
+      id: newId,
+      name: newContactName.trim(),
+      role: newContactRole.trim() || 'Friend 👧',
+      avatar: require('./assets/avatar_anvi_kid.jpg'), // default fallback avatar
+      status: 'online',
+      statusText: 'Active',
+      time: 'Just Now',
+      unread: 0,
+      email: `${newContactName.trim().toLowerCase()}@kidsmail.org`,
+      phone: 'None',
+      bio: newContactBio.trim() || 'New friend!',
+      lastUpdated: Date.now()
+    };
+
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setProfiles(prev => [newProfile, ...prev]);
+    setMessages(prev => ({ ...prev, [newId]: [] }));
+
+    // Reset state
+    setNewContactName('');
+    setNewContactRole('');
+    setNewContactBio('');
+    setAddContactModalVisible(false);
+  };
+
   // Scroll to bottom when messages or typing status updates
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -2181,7 +2219,10 @@ export default function App() {
                       
                       <TouchableOpacity 
                         style={styles.headerTopCircleBtn}
-                        onPress={() => alert("Create a new chat! ＋")}
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          setAddContactModalVisible(true);
+                        }}
                         activeOpacity={0.7}
                       >
                         <Text style={styles.headerTopCircleText}>＋</Text>
@@ -2458,6 +2499,79 @@ export default function App() {
                   onPress={() => setAdultAlertVisible(false)}
                 >
                   <Text style={styles.adultAlertBtnSecondaryText}>Got it, close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Add Contact Modal */}
+        <Modal
+          visible={addContactModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setAddContactModalVisible(false);
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { padding: 24 }]}>
+              {/* Drag Handle to make it consistent with bottom sheet style */}
+              <View style={styles.dragHandleArea}>
+                <View style={styles.modalDragHandle} />
+              </View>
+
+              <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 20, color: '#1E3A8A', textAlign: 'center' }}>
+                ➕ Add New Contact
+              </Text>
+              
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Name *</Text>
+              <TextInput
+                style={[styles.chatInput, { flex: 0, width: '100%', marginBottom: 16, marginRight: 0 }]}
+                placeholder="Enter name (e.g. Alex)"
+                placeholderTextColor="#6F6D83"
+                value={newContactName}
+                onChangeText={setNewContactName}
+              />
+              
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Role (e.g. Friend 👧, Brother 👦, Teacher 👩)</Text>
+              <TextInput
+                style={[styles.chatInput, { flex: 0, width: '100%', marginBottom: 16, marginRight: 0 }]}
+                placeholder="Enter role (default: Friend 👧)"
+                placeholderTextColor="#6F6D83"
+                value={newContactRole}
+                onChangeText={setNewContactRole}
+              />
+
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Bio (Personality profile for simulations)</Text>
+              <TextInput
+                style={[styles.chatInput, { flex: 0, width: '100%', marginBottom: 24, marginRight: 0 }]}
+                placeholder="Enter bio (e.g. Loves video games and soccer! ⚽)"
+                placeholderTextColor="#6F6D83"
+                value={newContactBio}
+                onChangeText={setNewContactBio}
+              />
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
+                <TouchableOpacity 
+                  style={[styles.actionBtnSecondary, { flex: 1, height: 48 }]} 
+                  onPress={() => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setAddContactModalVisible(false);
+                    setNewContactName('');
+                    setNewContactRole('');
+                    setNewContactBio('');
+                  }}
+                >
+                  <Text style={styles.actionBtnSecondaryText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.sendButton, { flex: 1, height: 48, backgroundColor: '#2563EB' }]} 
+                  onPress={handleAddContact}
+                >
+                  <Text style={styles.sendButtonText}>Add Contact</Text>
                 </TouchableOpacity>
               </View>
             </View>
