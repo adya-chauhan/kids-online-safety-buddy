@@ -831,6 +831,8 @@ export default function App() {
   const renderTabBar = () => {
     if (activeChat) return null;
     
+    const isParent = currentUser?.role?.toLowerCase().includes('parent');
+
     return (
       <View style={styles.tabBar}>
         <TouchableOpacity 
@@ -842,14 +844,16 @@ export default function App() {
           <Text style={[styles.tabLabel, activeTab === 'chats' && styles.tabLabelActive]} numberOfLines={1}>Chats</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
-          onPress={() => setActiveTab('dashboard')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'dashboard' && styles.tabIconActive]}>📊</Text>
-          <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]} numberOfLines={1}>Dashboard</Text>
-        </TouchableOpacity>
+        {isParent && (
+          <TouchableOpacity 
+            style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
+            onPress={() => setActiveTab('dashboard')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabIcon, activeTab === 'dashboard' && styles.tabIconActive]}>📊</Text>
+            <Text style={[styles.tabLabel, activeTab === 'dashboard' && styles.tabLabelActive]} numberOfLines={1}>Dashboard</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity 
           style={[styles.tabItem, activeTab === 'resources' && styles.tabItemActive]}
@@ -3083,7 +3087,7 @@ export default function App() {
 
 
 
-            {activeTab === 'dashboard' && renderDashboardScreen()}
+            {activeTab === 'dashboard' && currentUser?.role?.toLowerCase().includes('parent') && renderDashboardScreen()}
 
             {activeTab === 'resources' && renderResourcesScreen()}
 
