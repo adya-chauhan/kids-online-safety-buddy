@@ -537,7 +537,7 @@ export default function App() {
                   id: p.id,
                   name: p.name,
                   role: p.role,
-                  avatar: require('./assets/avatar_anvi_kid.jpg'), // default avatar
+                  avatar: p.avatar_url || '',
                   status: 'online',
                   statusText: p.bio || 'Active',
                   time: 'Just Now',
@@ -1119,9 +1119,11 @@ export default function App() {
         <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
           {/* Interactive Profile Summary Card */}
           <View style={styles.settingsMiniProfile}>
-            <View style={styles.settingsAvatarCircle}>
-              <Text style={styles.settingsAvatarText}>👤</Text>
-            </View>
+            <RenderAvatar 
+              name={currentUser?.name || 'Navi'} 
+              avatar={currentUser?.avatar_url || ''} 
+              style={styles.settingsAvatarCircle} 
+            />
             <View style={styles.settingsProfileInfo}>
               <Text style={styles.settingsProfileName}>{currentUser?.name || 'Navi User'}</Text>
               <Text style={styles.settingsProfileDesc}>{currentUser?.phone ? `+${currentUser.phone}` : 'Child Account'}</Text>
@@ -1867,7 +1869,7 @@ export default function App() {
             id: found.id,
             name: found.name,
             role: found.role || 'Friend 👧',
-            avatar: require('./assets/avatar_anvi_kid.jpg'), // default avatar
+            avatar: found.avatar_url || '', // use avatar_url if present, else first letter default
             status: 'online',
             statusText: found.bio || 'Active',
             time: 'Just Now',
