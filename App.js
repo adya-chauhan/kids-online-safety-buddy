@@ -408,6 +408,50 @@ const checkMessageSafety = (text, isUser = true) => {
   return null; // Message is safe!
 };
 
+const getAvatarColor = (name) => {
+  if (!name) return '#3B82F6';
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hues = [200, 220, 240, 260, 280, 300, 320, 340, 15, 35, 140, 160];
+  const hue = hues[Math.abs(hash) % hues.length];
+  return `hsl(${hue}, 70%, 60%)`;
+};
+
+const RenderAvatar = ({ name, avatar, style }) => {
+  const firstLetter = name ? name.trim().charAt(0).toUpperCase() : '?';
+  const bgColor = getAvatarColor(name);
+
+  // If avatar is a valid local asset or URL, render it
+  if (avatar && (typeof avatar === 'number' || (typeof avatar === 'object' && avatar.uri) || (typeof avatar === 'string' && avatar.startsWith('http')))) {
+    const source = typeof avatar === 'string' ? { uri: avatar } : avatar;
+    return <Image source={source} style={style} />;
+  }
+
+  // Fallback: render the first letter avatar
+  return (
+    <View style={[
+      style, 
+      { 
+        backgroundColor: bgColor, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        borderWidth: 0,
+        overflow: 'hidden'
+      }
+    ]}>
+      <Text style={{ 
+        color: '#FFFFFF', 
+        fontSize: Math.round(style.width * 0.45) || 16, 
+        fontWeight: '900' 
+      }}>
+        {firstLetter}
+      </Text>
+    </View>
+  );
+};
+
 export default function App() {
   const [profiles, setProfiles] = useState(initialProfilesData.map(p => ({ ...p, is_simulated: true })));
   const [messages, setMessages] = useState(initialMessagesData);
@@ -2271,7 +2315,7 @@ export default function App() {
                 onPress={() => setSelectedProfile(activeChat)}
                 activeOpacity={0.7}
               >
-                <Image source={activeChat.avatar} style={styles.chatHeaderAvatar} />
+                <RenderAvatar name={activeChat.name} avatar={activeChat.avatar} style={styles.chatHeaderAvatar} />
                 <View style={styles.chatHeaderDetails}>
                   <Text style={styles.chatHeaderName}>{activeChat.name}</Text>
                   <Text style={styles.chatHeaderStatus}>
@@ -2675,7 +2719,7 @@ export default function App() {
 
                           {/* Avatar without Status Ring */}
                           <View style={styles.avatarWrapper}>
-                            <Image source={profile.avatar} style={styles.avatarImage} />
+                            <RenderAvatar name={profile.name} avatar={profile.avatar} style={styles.avatarImage} />
                           </View>
 
                           {/* Profile Details */}
@@ -2779,7 +2823,7 @@ export default function App() {
                         onPress={() => setSelectedProfile(null)}
                         activeOpacity={0.8}
                       >
-                        <Image source={selectedProfile.avatar} style={styles.modalAvatarImage} />
+                        <RenderAvatar name={selectedProfile.name} avatar={selectedProfile.avatar} style={styles.modalAvatarImage} />
                       </TouchableOpacity>
                       <Text style={styles.modalName}>{selectedProfile.name}</Text>
                       <Text style={styles.modalRole}>{selectedProfile.role}</Text>
