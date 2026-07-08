@@ -18,7 +18,9 @@ import {
   ActivityIndicator,
   Linking,
   LayoutAnimation,
-  UIManager
+  UIManager,
+  Keyboard,
+  TouchableWithoutFeedback
 } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -2168,117 +2170,121 @@ export default function App() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-        <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center' }}>
-          
-          <View style={{ alignItems: 'center', marginBottom: 32 }}>
-            <Image 
-              source={require('./assets/navi_serious.png')} 
-              style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 16 }} 
-            />
-            <Text style={{ fontSize: 28, fontWeight: '900', color: '#1E3A8A', textAlign: 'center' }}>Welcome to Navi! 🛡️</Text>
-            <Text style={{ fontSize: 15, color: '#64748B', textAlign: 'center', marginTop: 8, paddingHorizontal: 16 }}>
-              Navi is your online safety buddy. Let's create your profile to start chatting with friends safely!
-            </Text>
-          </View>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
+              
+              <View style={{ alignItems: 'center', marginBottom: 32 }}>
+                <Image 
+                  source={require('./assets/navi_serious.png')} 
+                  style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 16 }} 
+                />
+                <Text style={{ fontSize: 28, fontWeight: '900', color: '#1E3A8A', textAlign: 'center' }}>Welcome to Navi! 🛡️</Text>
+                <Text style={{ fontSize: 15, color: '#64748B', textAlign: 'center', marginTop: 8, paddingHorizontal: 16 }}>
+                  Navi is your online safety buddy. Let's create your profile to start chatting with friends safely!
+                </Text>
+              </View>
 
-          <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#E2E8F0', elevation: 2 }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Your Name *</Text>
-            <TextInput
-              style={{
-                height: 48,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: '#E2E8F0',
-                paddingHorizontal: 16,
-                fontSize: 15,
-                color: '#1E293B',
-                marginBottom: 16,
-                backgroundColor: '#F8FAFC'
-              }}
-              placeholder="Enter your name (e.g. Pari)"
-              placeholderTextColor="#94A3B8"
-              value={regName}
-              onChangeText={setRegName}
-            />
-
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Phone Number *</Text>
-            <TextInput
-              style={{
-                height: 48,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: '#E2E8F0',
-                paddingHorizontal: 16,
-                fontSize: 15,
-                color: '#1E293B',
-                marginBottom: 16,
-                backgroundColor: '#F8FAFC'
-              }}
-              placeholder="Enter phone number (e.g. 555-0199)"
-              placeholderTextColor="#94A3B8"
-              keyboardType="phone-pad"
-              value={regPhone}
-              onChangeText={setRegPhone}
-            />
-
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Account Type</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-              {['Kid 👧', 'Parent 👨', 'Brother 👦'].map((role) => (
-                <TouchableOpacity
-                  key={role}
+              <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#E2E8F0', elevation: 2 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Your Name *</Text>
+                <TextInput
                   style={{
-                    flex: 1,
-                    height: 44,
+                    height: 48,
                     borderRadius: 12,
                     borderWidth: 1,
-                    borderColor: regRole === role ? '#2563EB' : '#E2E8F0',
-                    backgroundColor: regRole === role ? '#EFF6FF' : '#FFFFFF',
-                    justifyContent: 'center',
-                    alignItems: 'center'
+                    borderColor: '#E2E8F0',
+                    paddingHorizontal: 16,
+                    fontSize: 15,
+                    color: '#1E293B',
+                    marginBottom: 16,
+                    backgroundColor: '#F8FAFC'
                   }}
-                  onPress={() => setRegRole(role)}
+                  placeholder="Enter your name (e.g. Pari)"
+                  placeholderTextColor="#94A3B8"
+                  value={regName}
+                  onChangeText={setRegName}
+                />
+
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Phone Number *</Text>
+                <TextInput
+                  style={{
+                    height: 48,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0',
+                    paddingHorizontal: 16,
+                    fontSize: 15,
+                    color: '#1E293B',
+                    marginBottom: 16,
+                    backgroundColor: '#F8FAFC'
+                  }}
+                  placeholder="Enter phone number (e.g. 555-0199)"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="phone-pad"
+                  value={regPhone}
+                  onChangeText={setRegPhone}
+                />
+
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Account Type</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                  {['Kid 👧', 'Parent 👨', 'Brother 👦'].map((role) => (
+                    <TouchableOpacity
+                      key={role}
+                      style={{
+                        flex: 1,
+                        height: 44,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: regRole === role ? '#2563EB' : '#E2E8F0',
+                        backgroundColor: regRole === role ? '#EFF6FF' : '#FFFFFF',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                      onPress={() => setRegRole(role)}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: regRole === role ? '#2563EB' : '#475569' }}>
+                        {role}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Short Bio</Text>
+                <TextInput
+                  style={{
+                    height: 48,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0',
+                    paddingHorizontal: 16,
+                    fontSize: 15,
+                    color: '#1E293B',
+                    marginBottom: 24,
+                    backgroundColor: '#F8FAFC'
+                  }}
+                  placeholder="Loves painting and coding! 🎨💻"
+                  placeholderTextColor="#94A3B8"
+                  value={regBio}
+                  onChangeText={setRegBio}
+                />
+
+                <TouchableOpacity 
+                  style={{
+                    height: 48,
+                    backgroundColor: '#2563EB',
+                    borderRadius: 12,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    elevation: 2
+                  }} 
+                  onPress={handleRegisterUser}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: regRole === role ? '#2563EB' : '#475569' }}>
-                    {role}
-                  </Text>
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>Start Using Navi 🛡️</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Short Bio</Text>
-            <TextInput
-              style={{
-                height: 48,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: '#E2E8F0',
-                paddingHorizontal: 16,
-                fontSize: 15,
-                color: '#1E293B',
-                marginBottom: 24,
-                backgroundColor: '#F8FAFC'
-              }}
-              placeholder="Loves painting and coding! 🎨💻"
-              placeholderTextColor="#94A3B8"
-              value={regBio}
-              onChangeText={setRegBio}
-            />
-
-            <TouchableOpacity 
-              style={{
-                height: 48,
-                backgroundColor: '#2563EB',
-                borderRadius: 12,
-                justifyContent: 'center',
-                alignItems: 'center',
-                elevation: 2
-              }} 
-              onPress={handleRegisterUser}
-            >
-              <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>Start Using Navi 🛡️</Text>
-            </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
-        </ScrollView>
+        </TouchableWithoutFeedback>
       </SafeAreaView>
     );
   }
@@ -2933,71 +2939,79 @@ export default function App() {
             setAddContactModalVisible(false);
           }}
         >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContainer, { padding: 24 }]}>
-              {/* Drag Handle to make it consistent with bottom sheet style */}
-              <View style={styles.dragHandleArea}>
-                <View style={styles.modalDragHandle} />
-              </View>
+          <TouchableWithoutFeedback onPress={() => {
+            Keyboard.dismiss();
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setAddContactModalVisible(false);
+          }}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View style={[styles.modalContainer, { padding: 24 }]}>
+                  {/* Drag Handle to make it consistent with bottom sheet style */}
+                  <View style={styles.dragHandleArea}>
+                    <View style={styles.modalDragHandle} />
+                  </View>
 
-              <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 20, color: '#1E3A8A', textAlign: 'center' }}>
-                ➕ Add Contact by Phone Number
-              </Text>
-              
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Search by Phone Number *</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                <TextInput
-                  style={[styles.chatInput, { flex: 1, height: 44, marginRight: 0 }]}
-                  placeholder="Enter phone number (e.g. 555-0199)"
-                  placeholderTextColor="#6F6D83"
-                  keyboardType="phone-pad"
-                  value={searchPhoneQuery}
-                  onChangeText={setSearchPhoneQuery}
-                />
-                <TouchableOpacity 
-                  style={[styles.sendButton, { width: 80, height: 44, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
-                  onPress={handleSearchContactByPhone}
-                >
-                  {isSearchingContact ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Search</Text>
+                  <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 20, color: '#1E3A8A', textAlign: 'center' }}>
+                    ➕ Add Contact by Phone Number
+                  </Text>
+                  
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Search by Phone Number *</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                    <TextInput
+                      style={[styles.chatInput, { flex: 1, height: 44, marginRight: 0 }]}
+                      placeholder="Enter phone number (e.g. 555-0199)"
+                      placeholderTextColor="#6F6D83"
+                      keyboardType="phone-pad"
+                      value={searchPhoneQuery}
+                      onChangeText={setSearchPhoneQuery}
+                    />
+                    <TouchableOpacity 
+                      style={[styles.sendButton, { width: 80, height: 44, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
+                      onPress={handleSearchContactByPhone}
+                    >
+                      {isSearchingContact ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Search</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  {foundContactProfile && (
+                    <View style={{ backgroundColor: '#EFF6FF', padding: 16, borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, borderColor: '#3B82F6', marginBottom: 20 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#1E3A8A', marginBottom: 8 }}>Found User! ✅</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>Name: {foundContactProfile.name}</Text>
+                      <Text style={{ fontSize: 13, color: '#475569' }}>Role: {foundContactProfile.role}</Text>
+                      <Text style={{ fontSize: 12, color: '#64748B', fontStyle: 'italic', marginTop: 4 }}>"{foundContactProfile.bio}"</Text>
+                    </View>
                   )}
-                </TouchableOpacity>
-              </View>
 
-              {foundContactProfile && (
-                <View style={{ backgroundColor: '#EFF6FF', padding: 16, borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, borderColor: '#3B82F6', marginBottom: 20 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '800', color: '#1E3A8A', marginBottom: 8 }}>Found User! ✅</Text>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>Name: {foundContactProfile.name}</Text>
-                  <Text style={{ fontSize: 13, color: '#475569' }}>Role: {foundContactProfile.role}</Text>
-                  <Text style={{ fontSize: 12, color: '#64748B', fontStyle: 'italic', marginTop: 4 }}>"{foundContactProfile.bio}"</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
+                    <TouchableOpacity 
+                      style={[styles.actionBtnSecondary, { flex: 1, height: 48 }]} 
+                      onPress={() => {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        setSearchPhoneQuery('');
+                        setFoundContactProfile(null);
+                        setAddContactModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.actionBtnSecondaryText}>Cancel</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={[styles.sendButton, { flex: 1, height: 48, backgroundColor: foundContactProfile ? '#10B981' : '#94A3B8' }]} 
+                      onPress={handleConfirmAddFoundContact}
+                      disabled={!foundContactProfile}
+                    >
+                      <Text style={styles.sendButtonText}>Add to Chats</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              )}
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
-                <TouchableOpacity 
-                  style={[styles.actionBtnSecondary, { flex: 1, height: 48 }]} 
-                  onPress={() => {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    setSearchPhoneQuery('');
-                    setFoundContactProfile(null);
-                    setAddContactModalVisible(false);
-                  }}
-                >
-                  <Text style={styles.actionBtnSecondaryText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.sendButton, { flex: 1, height: 48, backgroundColor: foundContactProfile ? '#10B981' : '#94A3B8' }]} 
-                  onPress={handleConfirmAddFoundContact}
-                  disabled={!foundContactProfile}
-                >
-                  <Text style={styles.sendButtonText}>Add to Chats</Text>
-                </TouchableOpacity>
-              </View>
+              </TouchableWithoutFeedback>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
         </Modal>
 
         {/* Menu Options Popover */}
