@@ -1681,6 +1681,37 @@ export default function App() {
     generatePoliteSuggestions(textToAnalyze);
   };
 
+  const sendReportToAdult = (adultId) => {
+    let reportText = "";
+    if (pendingImage) {
+      reportText = `🚨 [Navi Safety Report]\nI was about to send an unsafe image.\nHow Navi helped: Navi blocked the image and helped me choose a safe alternative! 🛡️`;
+    } else if (pendingText) {
+      const type = safetyCategory === 'IGNORE_PIVOT' ? 'private information' : 'unsafe content';
+      reportText = `🚨 [Navi Safety Report]\nI was about to send a message containing ${type}: "${pendingText}".\nHow Navi helped: Navi intercepted this message and helped me reconsider and write a safe/polite message instead! 🛡️`;
+    } else {
+      const lastMsgText = interceptedText || "";
+      const type = safetyCategory === 'IGNORE_PIVOT' ? 'request for private information' : 'mean or unsafe content';
+      reportText = `🚨 [Navi Safety Report]\n${activeChat?.name || 'Someone'} sent me a message containing ${type}: "${lastMsgText}".\nHow Navi helped: Navi alerted me of the potential safety risk, blocked/warned me, and guided me to ignore it or alert you! 🛡️`;
+    }
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    setMessages(prev => ({
+      ...prev,
+      [adultId]: [...(prev[adultId] || []), {
+        id: `safety_report_${Date.now()}`,
+        text: reportText,
+        sender: 'user',
+        time: timeStr
+      }]
+    }));
+
+    setProfiles(prev => prev.map(p => 
+      p.id === adultId ? { ...p, time: timeStr, lastUpdated: Date.now() } : p
+    ));
+  };
+
   const handleNaviTellAdult = () => {
     if (!activeChat) return;
     setNaviAlertAdultCount(prev => prev + 1);
@@ -1693,11 +1724,13 @@ export default function App() {
     // Construct the automatic report text
     let reportText = "";
     if (pendingImage) {
-      reportText = `🚨 [Navi Safety Report] I was about to send a mean image. Navi helped me reconsider and handle this safely.`;
+      reportText = `🚨 [Navi Safety Report]\nI was about to send an unsafe image.\nHow Navi helped: Navi blocked the image and helped me choose a safe alternative! 🛡️`;
     } else if (pendingText) {
-      reportText = `🚨 [Navi Safety Report] I was about to send a mean message: "${pendingText}". Navi helped me reconsider and handle this safely.`;
+      const type = safetyCategory === 'IGNORE_PIVOT' ? 'private information' : 'unsafe content';
+      reportText = `🚨 [Navi Safety Report]\nI was about to send a message containing ${type}: "${pendingText}".\nHow Navi helped: Navi intercepted this message and helped me reconsider and write a safe/polite message instead! 🛡️`;
     } else {
-      reportText = `🚨 [Navi Safety Report] ${activeChat.name} sent me a mean message: "${lastMsgText}". Navi helped me handle this safely.`;
+      const type = safetyCategory === 'IGNORE_PIVOT' ? 'request for private information' : 'mean or unsafe content';
+      reportText = `🚨 [Navi Safety Report]\n${activeChat.name} sent me a message containing ${type}: "${lastMsgText}".\nHow Navi helped: Navi alerted me of the potential safety risk, blocked/warned me, and guided me to ignore it or alert you! 🛡️`;
     }
 
     setPendingImage(null);
@@ -1706,7 +1739,7 @@ export default function App() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Send the report automatically to Mommy (id: '4') and Daddy (id: '5')
+    // Send the report automatically to Mommy, Daddy, and the Custom Trusted Adult (if present)
     setMessages(prev => {
       const updated = { ...prev };
       
@@ -1727,13 +1760,24 @@ export default function App() {
         sender: 'user',
         time: timeStr
       }];
+
+      // Send to Custom Trusted Adult
+      if (trustedAdult) {
+        const adultMsgId = `adult_report_${Date.now()}`;
+        updated['trusted_adult'] = [...(updated['trusted_adult'] || []), {
+          id: adultMsgId,
+          text: reportText,
+          sender: 'user',
+          time: timeStr
+        }];
+      }
       
       return updated;
     });
 
-    // Bring Mommy and Daddy profiles to top
+    // Bring profiles to top
     setProfiles(prev => prev.map(p => 
-      (p.id === '4' || p.id === '5')
+      (p.id === '4' || p.id === '5' || p.id === 'trusted_adult')
         ? { ...p, time: timeStr, lastUpdated: Date.now() } 
         : p
     ));
@@ -1745,7 +1789,7 @@ export default function App() {
     setInterceptedText(null);
     setIsBypassReady(false);
 
-    // Wait 2.5 seconds, then animate exit, clean up, and open Mommy's chat
+    // Wait 2.5 seconds, then animate exit, clean up, and open the chat
     setTimeout(() => {
       Animated.parallel([
         Animated.timing(naviAnim, {
@@ -1765,10 +1809,11 @@ export default function App() {
         setNaviFeedbackMessage(null);
         setNaviMascotImageState('serious');
         
-        // Open Mommy's chat screen so the child sees the report was sent and can chat
-        const mommyProfile = profiles.find(p => p.id === '4');
-        if (mommyProfile) {
-          openChat(mommyProfile);
+        // Open the designated chat screen
+        const targetId = trustedAdult ? 'trusted_adult' : '4';
+        const targetProfile = profiles.find(p => p.id === targetId);
+        if (targetProfile) {
+          openChat(targetProfile);
         }
       });
     }, 2500);
@@ -1776,6 +1821,7 @@ export default function App() {
 
   const messageMommyAction = () => {
     setAdultAlertVisible(false);
+    sendReportToAdult('4');
     const mommyProfile = profiles.find(p => p.id === '4');
     if (mommyProfile) {
       openChat(mommyProfile);
@@ -1784,6 +1830,7 @@ export default function App() {
 
   const messageDaddyAction = () => {
     setAdultAlertVisible(false);
+    sendReportToAdult('5');
     const daddyProfile = profiles.find(p => p.id === '5');
     if (daddyProfile) {
       openChat(daddyProfile);
@@ -1792,6 +1839,7 @@ export default function App() {
 
   const messageTrustedAdultAction = () => {
     setAdultAlertVisible(false);
+    sendReportToAdult('trusted_adult');
     const adultProfile = profiles.find(p => p.id === 'trusted_adult');
     if (adultProfile) {
       openChat(adultProfile);
