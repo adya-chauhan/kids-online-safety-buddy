@@ -652,6 +652,15 @@ export default function App() {
                   } else if (textStr === '__CALL_ACCEPTED__') {
                     if (activeCallRef.current && activeCallRef.current.contactId === senderId) {
                       setCallStatus('connected');
+                      
+                      const sortedIds = [currentUser.id, senderId].sort().join('_');
+                      const roomName = `NaviSecureCall_${sortedIds}`;
+                      const startVideoMuted = activeCallRef.current.type === 'voice';
+                      const url = `https://meet.jit.si/${roomName}#config.startWithVideoMuted=${startVideoMuted}&config.startWithAudioMuted=false`;
+                      
+                      setTimeout(() => {
+                        Linking.openURL(url).catch(err => console.error("Error opening call URL:", err));
+                      }, 500);
                     }
                   } else if (textStr === '__CALL_DECLINED__') {
                     if (activeCallRef.current && activeCallRef.current.contactId === senderId) {
@@ -1985,6 +1994,16 @@ export default function App() {
     setActiveCall({ contactId: senderId, contactName: senderName, type, isIncoming: true });
     setCallStatus('connected');
     setIncomingCall(null);
+
+    // Open Jitsi Meet URL for real-time audio/video call
+    const sortedIds = [currentUser.id, senderId].sort().join('_');
+    const roomName = `NaviSecureCall_${sortedIds}`;
+    const startVideoMuted = type === 'voice';
+    const url = `https://meet.jit.si/${roomName}#config.startWithVideoMuted=${startVideoMuted}&config.startWithAudioMuted=false`;
+    
+    setTimeout(() => {
+      Linking.openURL(url).catch(err => console.error("Error opening call URL:", err));
+    }, 500);
   };
 
   const declineCall = () => {
@@ -3234,6 +3253,26 @@ export default function App() {
                 </Text>
                 {callStatus === 'connected' && (
                   <Text style={styles.callTimerText}>{formatCallTime(callTimer)}</Text>
+                )}
+                {callStatus === 'connected' && activeCall && !(
+                  !activeCall.contactId || 
+                  activeCall.contactId === '4' || 
+                  activeCall.contactId === '5' || 
+                  activeCall.contactId === 'trusted_adult'
+                ) && (
+                  <TouchableOpacity 
+                    style={styles.joinCallPill}
+                    onPress={() => {
+                      const sortedIds = [currentUser.id, activeCall.contactId].sort().join('_');
+                      const roomName = `NaviSecureCall_${sortedIds}`;
+                      const startVideoMuted = activeCall.type === 'voice';
+                      const url = `https://meet.jit.si/${roomName}#config.startWithVideoMuted=${startVideoMuted}&config.startWithAudioMuted=false`;
+                      Linking.openURL(url).catch(err => console.error("Error opening call URL:", err));
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.joinCallPillText}>📡 Join Live Call Session</Text>
+                  </TouchableOpacity>
                 )}
               </View>
             </SafeAreaView>
@@ -5578,6 +5617,25 @@ const styles = StyleSheet.create({
   },
   endCallEmoji: {
     fontSize: 32,
+    color: '#FFFFFF',
+  },
+  joinCallPill: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    marginTop: 16,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  joinCallPillText: {
+    fontSize: 14,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   // Incoming Call Overlay styles
