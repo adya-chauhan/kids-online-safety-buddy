@@ -1684,14 +1684,14 @@ export default function App() {
   const sendReportToAdult = (adultId) => {
     let reportText = "";
     if (pendingImage) {
-      reportText = `🚨 [Navi Safety Report]\nI was about to send an unsafe image.\nHow Navi helped: Navi blocked the image and helped me choose a safe alternative! 🛡️`;
+      reportText = `🚨 [Navi Safety Report]\nI was about to send an unsafe image.\nCan you help intervene? 🛡️`;
     } else if (pendingText) {
       const type = safetyCategory === 'IGNORE_PIVOT' ? 'private information' : 'unsafe content';
-      reportText = `🚨 [Navi Safety Report]\nI was about to send a message containing ${type}: "${pendingText}".\nHow Navi helped: Navi intercepted this message and helped me reconsider and write a safe/polite message instead! 🛡️`;
+      reportText = `🚨 [Navi Safety Report]\nI was about to send a message containing ${type}: "${pendingText}".\nCan you help intervene? 🛡️`;
     } else {
       const lastMsgText = interceptedText || "";
       const type = safetyCategory === 'IGNORE_PIVOT' ? 'request for private information' : 'mean or unsafe content';
-      reportText = `🚨 [Navi Safety Report]\n${activeChat?.name || 'Someone'} sent me a message containing ${type}: "${lastMsgText}".\nHow Navi helped: Navi alerted me of the potential safety risk, blocked/warned me, and guided me to ignore it or alert you! 🛡️`;
+      reportText = `🚨 [Navi Safety Report]\n${activeChat?.name || 'Someone'} sent me a message containing ${type}: "${lastMsgText}".\nCan you help intervene? 🛡️`;
     }
 
     const now = new Date();
@@ -1724,13 +1724,13 @@ export default function App() {
     // Construct the automatic report text
     let reportText = "";
     if (pendingImage) {
-      reportText = `🚨 [Navi Safety Report]\nI was about to send an unsafe image.\nHow Navi helped: Navi blocked the image and helped me choose a safe alternative! 🛡️`;
+      reportText = `🚨 [Navi Safety Report]\nI was about to send an unsafe image.\nCan you help intervene? 🛡️`;
     } else if (pendingText) {
       const type = safetyCategory === 'IGNORE_PIVOT' ? 'private information' : 'unsafe content';
-      reportText = `🚨 [Navi Safety Report]\nI was about to send a message containing ${type}: "${pendingText}".\nHow Navi helped: Navi intercepted this message and helped me reconsider and write a safe/polite message instead! 🛡️`;
+      reportText = `🚨 [Navi Safety Report]\nI was about to send a message containing ${type}: "${pendingText}".\nCan you help intervene? 🛡️`;
     } else {
       const type = safetyCategory === 'IGNORE_PIVOT' ? 'request for private information' : 'mean or unsafe content';
-      reportText = `🚨 [Navi Safety Report]\n${activeChat.name} sent me a message containing ${type}: "${lastMsgText}".\nHow Navi helped: Navi alerted me of the potential safety risk, blocked/warned me, and guided me to ignore it or alert you! 🛡️`;
+      reportText = `🚨 [Navi Safety Report]\n${activeChat.name} sent me a message containing ${type}: "${lastMsgText}".\nCan you help intervene? 🛡️`;
     }
 
     setPendingImage(null);
