@@ -2952,79 +2952,84 @@ export default function App() {
             setAddContactModalVisible(false);
           }}
         >
-          <TouchableWithoutFeedback onPress={() => {
-            Keyboard.dismiss();
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            setAddContactModalVisible(false);
-          }}>
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={[styles.modalContainer, { padding: 24 }]}>
-                  {/* Drag Handle to make it consistent with bottom sheet style */}
-                  <View style={styles.dragHandleArea}>
-                    <View style={styles.modalDragHandle} />
-                  </View>
-
-                  <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 20, color: '#1E3A8A', textAlign: 'center' }}>
-                    ➕ Add Contact by Phone Number
-                  </Text>
-                  
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Search by Phone Number *</Text>
-                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                    <TextInput
-                      style={[styles.chatInput, { flex: 1, height: 44, marginRight: 0 }]}
-                      placeholder="Enter phone number (e.g. 555-0199)"
-                      placeholderTextColor="#6F6D83"
-                      keyboardType="phone-pad"
-                      value={searchPhoneQuery}
-                      onChangeText={setSearchPhoneQuery}
-                    />
-                    <TouchableOpacity 
-                      style={[styles.sendButton, { width: 80, height: 44, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
-                      onPress={handleSearchContactByPhone}
-                    >
-                      {isSearchingContact ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Search</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-
-                  {foundContactProfile && (
-                    <View style={{ backgroundColor: '#EFF6FF', padding: 16, borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, borderColor: '#3B82F6', marginBottom: 20 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#1E3A8A', marginBottom: 8 }}>Found User! ✅</Text>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>Name: {foundContactProfile.name}</Text>
-                      <Text style={{ fontSize: 13, color: '#475569' }}>Role: {foundContactProfile.role}</Text>
-                      <Text style={{ fontSize: 12, color: '#64748B', fontStyle: 'italic', marginTop: 4 }}>"{foundContactProfile.bio}"</Text>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <TouchableWithoutFeedback onPress={() => {
+              Keyboard.dismiss();
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setAddContactModalVisible(false);
+            }}>
+              <View style={styles.modalOverlay}>
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                  <View style={[styles.modalContainer, { padding: 24 }]}>
+                    {/* Drag Handle to make it consistent with bottom sheet style */}
+                    <View style={styles.dragHandleArea}>
+                      <View style={styles.modalDragHandle} />
                     </View>
-                  )}
 
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
-                    <TouchableOpacity 
-                      style={[styles.actionBtnSecondary, { flex: 1, height: 48 }]} 
-                      onPress={() => {
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                        setSearchPhoneQuery('');
-                        setFoundContactProfile(null);
-                        setAddContactModalVisible(false);
-                      }}
-                    >
-                      <Text style={styles.actionBtnSecondaryText}>Cancel</Text>
-                    </TouchableOpacity>
+                    <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 20, color: '#1E3A8A', textAlign: 'center' }}>
+                      ➕ Add Contact by Phone Number
+                    </Text>
+                    
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Search by Phone Number *</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                      <TextInput
+                        style={[styles.chatInput, { flex: 1, height: 44, marginRight: 0 }]}
+                        placeholder="Enter phone number (e.g. 555-0199)"
+                        placeholderTextColor="#6F6D83"
+                        keyboardType="phone-pad"
+                        value={searchPhoneQuery}
+                        onChangeText={setSearchPhoneQuery}
+                      />
+                      <TouchableOpacity 
+                        style={[styles.sendButton, { width: 80, height: 44, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
+                        onPress={handleSearchContactByPhone}
+                      >
+                        {isSearchingContact ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Search</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
 
-                    <TouchableOpacity 
-                      style={[styles.sendButton, { flex: 1, height: 48, backgroundColor: foundContactProfile ? '#10B981' : '#94A3B8' }]} 
-                      onPress={handleConfirmAddFoundContact}
-                      disabled={!foundContactProfile}
-                    >
-                      <Text style={styles.sendButtonText}>Add to Chats</Text>
-                    </TouchableOpacity>
+                    {foundContactProfile && (
+                      <View style={{ backgroundColor: '#EFF6FF', padding: 16, borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, borderColor: '#3B82F6', marginBottom: 20 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: '#1E3A8A', marginBottom: 8 }}>Found User! ✅</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>Name: {foundContactProfile.name}</Text>
+                        <Text style={{ fontSize: 13, color: '#475569' }}>Role: {foundContactProfile.role}</Text>
+                        <Text style={{ fontSize: 12, color: '#64748B', fontStyle: 'italic', marginTop: 4 }}>"{foundContactProfile.bio}"</Text>
+                      </View>
+                    )}
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
+                      <TouchableOpacity 
+                        style={[styles.actionBtnSecondary, { flex: 1, height: 48 }]} 
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          setSearchPhoneQuery('');
+                          setFoundContactProfile(null);
+                          setAddContactModalVisible(false);
+                        }}
+                      >
+                        <Text style={styles.actionBtnSecondaryText}>Cancel</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity 
+                        style={[styles.sendButton, { flex: 1, height: 48, backgroundColor: foundContactProfile ? '#10B981' : '#94A3B8' }]} 
+                        onPress={handleConfirmAddFoundContact}
+                        disabled={!foundContactProfile}
+                      >
+                        <Text style={styles.sendButtonText}>Add to Chats</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Menu Options Popover */}
