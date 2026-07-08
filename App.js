@@ -449,6 +449,7 @@ export default function App() {
                 for (const dp of filteredDbProfiles) {
                   if (!existingIds.has(dp.id)) {
                     newProfiles.push(dp);
+                    existingIds.add(dp.id);
                   }
                 }
                 return newProfiles;
