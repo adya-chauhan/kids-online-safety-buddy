@@ -570,6 +570,42 @@ export default function App() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const isCurrentUserAdult = () => {
+    if (!currentUser) return false;
+    const roleStr = (currentUser.role || '').toLowerCase();
+    
+    // Check if phone matches the trusted adult phone number
+    if (trustedAdult && currentUser.phone && 
+        currentUser.phone.replace(/[^0-9]/g, '') === trustedAdult.phone.replace(/[^0-9]/g, '')) {
+      return true;
+    }
+    
+    // Check if the current user's role contains adult keywords
+    if (roleStr.includes('parent') || 
+        roleStr.includes('adult') || 
+        roleStr.includes('guardian') || 
+        roleStr.includes('trustee') || 
+        roleStr.includes('trust') ||
+        roleStr.includes('mother') ||
+        roleStr.includes('father') ||
+        roleStr.includes('mom') ||
+        roleStr.includes('dad')) {
+      return true;
+    }
+    
+    // Default fallback: if role includes kid keywords, return false
+    if (roleStr.includes('kid') || 
+        roleStr.includes('child') || 
+        roleStr.includes('brother') || 
+        roleStr.includes('sister') || 
+        roleStr.includes('sibling') ||
+        roleStr.includes('friend')) {
+      return false;
+    }
+    
+    return false;
+  };
+
   const activeChatRef = useRef(activeChat);
   useEffect(() => {
     activeChatRef.current = activeChat;
@@ -840,7 +876,7 @@ export default function App() {
   const renderTabBar = () => {
     if (activeChat) return null;
     
-    const isParent = currentUser?.role?.toLowerCase().includes('parent');
+    const isAdult = isCurrentUserAdult();
 
     return (
       <View style={styles.tabBar}>
@@ -853,7 +889,7 @@ export default function App() {
           <Text style={[styles.tabLabel, activeTab === 'chats' && styles.tabLabelActive]} numberOfLines={1}>Chats</Text>
         </TouchableOpacity>
 
-        {isParent && (
+        {isAdult && (
           <TouchableOpacity 
             style={[styles.tabItem, activeTab === 'dashboard' && styles.tabItemActive]}
             onPress={() => setActiveTab('dashboard')}
@@ -1283,7 +1319,7 @@ export default function App() {
           </View>
 
           {/* Trusted Adult Section for Kid Accounts */}
-          {(!currentUser || currentUser?.role?.toLowerCase().includes('kid')) && (
+          {(!currentUser || !isCurrentUserAdult()) && (
             <View style={styles.trustedAdultSection}>
               <Text style={styles.trustedAdultSectionTitle}>🛡️ Trusted Adult Contact</Text>
               {trustedAdult ? (
@@ -3106,7 +3142,7 @@ export default function App() {
 
 
 
-            {activeTab === 'dashboard' && currentUser?.role?.toLowerCase().includes('parent') && renderDashboardScreen()}
+            {activeTab === 'dashboard' && isCurrentUserAdult() && renderDashboardScreen()}
 
             {activeTab === 'resources' && renderResourcesScreen()}
 
