@@ -2677,7 +2677,7 @@ export default function App() {
                     <Text style={styles.headerTitle}>Chats</Text>
                     <Image 
                       source={require('./assets/navi_thumbs_up.png')} 
-                      style={{ width: 44, height: 44, resizeMode: 'contain', marginRight: 4 }} 
+                      style={{ width: 54, height: 54, resizeMode: 'contain', marginRight: 4 }} 
                     />
                   </View>
                 </View>
