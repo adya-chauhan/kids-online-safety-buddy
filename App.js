@@ -28,6 +28,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 import * as ImagePicker from 'expo-image-picker';
+import { WebView } from 'react-native-webview';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -688,15 +689,6 @@ export default function App() {
                   } else if (textStr === '__CALL_ACCEPTED__') {
                     if (activeCallRef.current && activeCallRef.current.contactId === senderId) {
                       setCallStatus('connected');
-                      
-                      const sortedIds = [currentUser.id, senderId].sort().join('_');
-                      const roomName = `NaviSecureCall_${sortedIds}`;
-                      const startVideoMuted = activeCallRef.current.type === 'voice';
-                      const url = `https://meet.jit.si/${roomName}#config.startWithVideoMuted=${startVideoMuted}&config.startWithAudioMuted=false`;
-                      
-                      setTimeout(() => {
-                        Linking.openURL(url).catch(err => console.error("Error opening call URL:", err));
-                      }, 500);
                     }
                   } else if (textStr === '__CALL_DECLINED__') {
                     if (activeCallRef.current && activeCallRef.current.contactId === senderId) {
@@ -1314,7 +1306,27 @@ export default function App() {
             />
             <View style={styles.settingsProfileInfo}>
               <Text style={styles.settingsProfileName}>{currentUser?.name || 'Navi User'}</Text>
-              <Text style={styles.settingsProfileDesc}>{currentUser?.phone ? `+${currentUser.phone}` : 'Child Account'}</Text>
+              <Text style={styles.settingsProfileDesc}>{currentUser?.phone ? `+${currentUser.phone}` : 'No phone verified'}</Text>
+              
+              {/* Account Type Badge */}
+              <View style={{ flexDirection: 'row', marginTop: 6 }}>
+                <View style={{
+                  backgroundColor: isCurrentUserAdult() ? '#D1FAE5' : '#DBEAFE',
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: isCurrentUserAdult() ? '#10B981' : '#3B82F6',
+                }}>
+                  <Text style={{
+                    fontSize: 11,
+                    fontWeight: '800',
+                    color: isCurrentUserAdult() ? '#065F46' : '#1E40AF',
+                  }}>
+                    {isCurrentUserAdult() ? '🧑‍💼 Adult' : '🧒 Kid'} ({currentUser?.role || 'Kid 👧'})
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
 
@@ -2030,16 +2042,6 @@ export default function App() {
     setActiveCall({ contactId: senderId, contactName: senderName, type, isIncoming: true });
     setCallStatus('connected');
     setIncomingCall(null);
-
-    // Open Jitsi Meet URL for real-time audio/video call
-    const sortedIds = [currentUser.id, senderId].sort().join('_');
-    const roomName = `NaviSecureCall_${sortedIds}`;
-    const startVideoMuted = type === 'voice';
-    const url = `https://meet.jit.si/${roomName}#config.startWithVideoMuted=${startVideoMuted}&config.startWithAudioMuted=false`;
-    
-    setTimeout(() => {
-      Linking.openURL(url).catch(err => console.error("Error opening call URL:", err));
-    }, 500);
   };
 
   const declineCall = () => {
@@ -3267,132 +3269,152 @@ export default function App() {
           onRequestClose={() => endCall()}
         >
           <View style={styles.fullscreenCallContainer}>
-            {/* Background for Video Call */}
-            {activeCall?.type === 'video' && !isVideoOff && (
-              <View style={styles.callVideoBackground}>
-                <View style={styles.simulatedVideoPlaceholder}>
-                  <Text style={styles.simulatedVideoEmoji}>🧑‍💻</Text>
-                  <Text style={styles.simulatedVideoText}>Simulated Video Feed</Text>
-                </View>
-              </View>
-            )}
-
-            {/* Top Bar: Status, Name, Timer */}
-            <SafeAreaView style={styles.callHeaderArea}>
-              <View style={styles.callHeaderContent}>
-                <View style={styles.callSecurePill}>
-                  <Text style={styles.callSecurePillText}>🛡️ Secured by Navi</Text>
-                </View>
-                <Text style={styles.callContactNameText}>{activeCall?.contactName}</Text>
-                <Text style={styles.callStatusText}>
-                  {callStatus === 'ringing' ? 'Ringing...' : 'Connected'}
-                </Text>
-                {callStatus === 'connected' && (
-                  <Text style={styles.callTimerText}>{formatCallTime(callTimer)}</Text>
-                )}
-                {callStatus === 'connected' && activeCall && !(
-                  !activeCall.contactId || 
-                  activeCall.contactId === '4' || 
-                  activeCall.contactId === '5' || 
-                  activeCall.contactId === 'trusted_adult'
-                ) && (
+            {callStatus === 'connected' && activeCall && !(
+              !activeCall.contactId || 
+              activeCall.contactId === '4' || 
+              activeCall.contactId === '5' || 
+              activeCall.contactId === 'trusted_adult'
+            ) ? (
+              <View style={{ flex: 1, width: '100%', height: '100%' }}>
+                <WebView
+                  source={{ uri: `https://meet.jit.si/NaviSecureCall_${[currentUser?.id, activeCall?.contactId].sort().join('_')}#config.startWithVideoMuted=${activeCall?.type === 'voice'}&config.startWithAudioMuted=false` }}
+                  style={{ flex: 1 }}
+                  originWhitelist={['*']}
+                  mediaPlaybackRequiresUserAction={false}
+                  allowsInlineMediaPlayback={true}
+                  javaScriptEnabled={true}
+                  domStorageEnabled={true}
+                  userAgent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36"
+                />
+                
+                {/* Floating In-App End Call button at the bottom */}
+                <View style={{
+                  position: 'absolute',
+                  bottom: 24,
+                  left: 0,
+                  right: 0,
+                  alignItems: 'center',
+                  zIndex: 20000
+                }}>
                   <TouchableOpacity 
-                    style={styles.joinCallPill}
-                    onPress={() => {
-                      const sortedIds = [currentUser.id, activeCall.contactId].sort().join('_');
-                      const roomName = `NaviSecureCall_${sortedIds}`;
-                      const startVideoMuted = activeCall.type === 'voice';
-                      const url = `https://meet.jit.si/${roomName}#config.startWithVideoMuted=${startVideoMuted}&config.startWithAudioMuted=false`;
-                      Linking.openURL(url).catch(err => console.error("Error opening call URL:", err));
-                    }}
+                    style={styles.endCallCircularBtn}
+                    onPress={() => endCall()}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.joinCallPillText}>📡 Join Live Call Session</Text>
+                    <Text style={styles.endCallEmoji}>📞</Text>
                   </TouchableOpacity>
-                )}
+                </View>
               </View>
-            </SafeAreaView>
+            ) : (
+              <>
+                {/* Background for Video Call */}
+                {activeCall?.type === 'video' && !isVideoOff && (
+                  <View style={styles.callVideoBackground}>
+                    <View style={styles.simulatedVideoPlaceholder}>
+                      <Text style={styles.simulatedVideoEmoji}>🧑‍💻</Text>
+                      <Text style={styles.simulatedVideoText}>Simulated Video Feed</Text>
+                    </View>
+                  </View>
+                )}
 
-            {/* Center Area (Audio Call or Video Call when video is disabled) */}
-            {(activeCall?.type === 'voice' || (activeCall?.type === 'video' && isVideoOff)) && (
-              <View style={styles.callCenterArea}>
-                <View style={styles.pulseContainer}>
-                  {/* Glowing Pulse Rings */}
-                  <View style={[styles.pulseRing, { width: 160, height: 160, borderRadius: 80, opacity: 0.15 }]} />
-                  <View style={[styles.pulseRing, { width: 200, height: 200, borderRadius: 100, opacity: 0.08 }]} />
-                  
-                  {/* Large Avatar */}
-                  <View style={styles.largeCallAvatar}>
-                    <Text style={styles.largeCallAvatarText}>
-                      {activeCall?.contactName ? activeCall.contactName.charAt(0).toUpperCase() : '?'}
+                {/* Top Bar: Status, Name, Timer */}
+                <SafeAreaView style={styles.callHeaderArea}>
+                  <View style={styles.callHeaderContent}>
+                    <View style={styles.callSecurePill}>
+                      <Text style={styles.callSecurePillText}>🛡️ Secured by Navi</Text>
+                    </View>
+                    <Text style={styles.callContactNameText}>{activeCall?.contactName}</Text>
+                    <Text style={styles.callStatusText}>
+                      {callStatus === 'ringing' ? 'Ringing...' : 'Connected'}
+                    </Text>
+                    {callStatus === 'connected' && (
+                      <Text style={styles.callTimerText}>{formatCallTime(callTimer)}</Text>
+                    )}
+                  </View>
+                </SafeAreaView>
+
+                {/* Center Area (Audio Call or Video Call when video is disabled) */}
+                {(activeCall?.type === 'voice' || (activeCall?.type === 'video' && isVideoOff)) && (
+                  <View style={styles.callCenterArea}>
+                    <View style={styles.pulseContainer}>
+                      {/* Glowing Pulse Rings */}
+                      <View style={[styles.pulseRing, { width: 160, height: 160, borderRadius: 80, opacity: 0.15 }]} />
+                      <View style={[styles.pulseRing, { width: 200, height: 200, borderRadius: 100, opacity: 0.08 }]} />
+                      
+                      {/* Large Avatar */}
+                      <View style={styles.largeCallAvatar}>
+                        <Text style={styles.largeCallAvatarText}>
+                          {activeCall?.contactName ? activeCall.contactName.charAt(0).toUpperCase() : '?'}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <Text style={styles.audioCallingIndicator}>
+                      {callStatus === 'ringing' ? '☎️ Dialing secure line...' : '🔊 Audio Active'}
                     </Text>
                   </View>
-                </View>
-                
-                <Text style={styles.audioCallingIndicator}>
-                  {callStatus === 'ringing' ? '☎️ Dialing secure line...' : '🔊 Audio Active'}
-                </Text>
-              </View>
-            )}
-
-            {/* Picture-in-Picture (PiP) user camera preview (Video calls only) */}
-            {activeCall?.type === 'video' && (
-              <View style={styles.userPipPreview}>
-                {isVideoOff ? (
-                  <View style={styles.pipVideoOff}>
-                    <Text style={{ fontSize: 16 }}>🔇</Text>
-                    <Text style={styles.pipText}>Video Off</Text>
-                  </View>
-                ) : (
-                  <View style={styles.pipVideoOn}>
-                    <Text style={styles.pipEmoji}>🧒</Text>
-                    <Text style={styles.pipLabel}>You</Text>
-                  </View>
                 )}
-              </View>
-            )}
 
-            {/* Bottom Controls Floating Container */}
-            <View style={styles.callControlsContainer}>
-              <View style={styles.callControlsRow}>
-                {/* Mute button */}
-                <TouchableOpacity 
-                  style={[styles.callBtnRound, isMuted && styles.callBtnActive]}
-                  onPress={() => setIsMuted(!isMuted)}
-                >
-                  <Text style={styles.callBtnEmoji}>{isMuted ? '🔇' : '🎙️'}</Text>
-                  <Text style={styles.callBtnLabel}>Mute</Text>
-                </TouchableOpacity>
-
-                {/* Speaker button */}
-                <TouchableOpacity 
-                  style={[styles.callBtnRound, isSpeaker && styles.callBtnActive]}
-                  onPress={() => setIsSpeaker(!isSpeaker)}
-                >
-                  <Text style={styles.callBtnEmoji}>{isSpeaker ? '🔈' : '🔊'}</Text>
-                  <Text style={styles.callBtnLabel}>Speaker</Text>
-                </TouchableOpacity>
-
-                {/* Video Call Camera Switch toggle */}
+                {/* Picture-in-Picture (PiP) user camera preview (Video calls only) */}
                 {activeCall?.type === 'video' && (
-                  <TouchableOpacity 
-                    style={[styles.callBtnRound, isVideoOff && styles.callBtnActive]}
-                    onPress={() => setIsVideoOff(!isVideoOff)}
-                  >
-                    <Text style={styles.callBtnEmoji}>{isVideoOff ? '📹' : '📷'}</Text>
-                    <Text style={styles.callBtnLabel}>Camera</Text>
-                  </TouchableOpacity>
+                  <View style={styles.userPipPreview}>
+                    {isVideoOff ? (
+                      <View style={styles.pipVideoOff}>
+                        <Text style={{ fontSize: 16 }}>🔇</Text>
+                        <Text style={styles.pipText}>Video Off</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.pipVideoOn}>
+                        <Text style={styles.pipEmoji}>🧒</Text>
+                        <Text style={styles.pipLabel}>You</Text>
+                      </View>
+                    )}
+                  </View>
                 )}
-              </View>
 
-              {/* End Call Button */}
-              <TouchableOpacity 
-                style={styles.endCallCircularBtn}
-                onPress={() => endCall()}
-              >
-                <Text style={styles.endCallEmoji}>📞</Text>
-              </TouchableOpacity>
-            </View>
+                {/* Bottom Controls Floating Container */}
+                <View style={styles.callControlsContainer}>
+                  <View style={styles.callControlsRow}>
+                    {/* Mute button */}
+                    <TouchableOpacity 
+                      style={[styles.callBtnRound, isMuted && styles.callBtnActive]}
+                      onPress={() => setIsMuted(!isMuted)}
+                    >
+                      <Text style={styles.callBtnEmoji}>{isMuted ? '🔇' : '🎙️'}</Text>
+                      <Text style={styles.callBtnLabel}>Mute</Text>
+                    </TouchableOpacity>
+
+                    {/* Speaker button */}
+                    <TouchableOpacity 
+                      style={[styles.callBtnRound, isSpeaker && styles.callBtnActive]}
+                      onPress={() => setIsSpeaker(!isSpeaker)}
+                    >
+                      <Text style={styles.callBtnEmoji}>{isSpeaker ? '🔈' : '🔊'}</Text>
+                      <Text style={styles.callBtnLabel}>Speaker</Text>
+                    </TouchableOpacity>
+
+                    {/* Video Call Camera Switch toggle */}
+                    {activeCall?.type === 'video' && (
+                      <TouchableOpacity 
+                        style={[styles.callBtnRound, isVideoOff && styles.callBtnActive]}
+                        onPress={() => setIsVideoOff(!isVideoOff)}
+                      >
+                        <Text style={styles.callBtnEmoji}>{isVideoOff ? '📹' : '📷'}</Text>
+                        <Text style={styles.callBtnLabel}>Camera</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* End Call Button */}
+                  <TouchableOpacity 
+                    style={styles.endCallCircularBtn}
+                    onPress={() => endCall()}
+                  >
+                    <Text style={styles.endCallEmoji}>📞</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
         </Modal>
 
