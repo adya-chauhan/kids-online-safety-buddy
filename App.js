@@ -444,18 +444,18 @@ const checkMessageSafety = (text, isUser = true) => {
     }
   }
 
-  // Medium risk / Private Info / Ignore & Pivot triggers (only checked for user messages)
-  if (isUser) {
-    const ignorePivotKeywords = [
-      "phone", "number", "address", "where do you live", "secret", 
-      "password", "email", "school name"
-    ];
-    for (const kw of ignorePivotKeywords) {
-      const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-      if (regex.test(lower)) {
-        return 'IGNORE_PIVOT';
-      }
+  // Medium risk / Private Info / Ignore & Pivot triggers (checked for both sent and received messages)
+  const ignorePivotKeywords = [
+    "phone", "number", "address", "where do you live", "secret", 
+    "password", "email", "school name", "where do you go to school", 
+    "your house", "your location", "whats your phone", "send phone",
+    "send number", "your number"
+  ];
+  for (const kw of ignorePivotKeywords) {
+    const escaped = kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    if (regex.test(lower)) {
+      return 'IGNORE_PIVOT';
     }
   }
 
@@ -1264,11 +1264,25 @@ export default function App() {
       setPoliteSuggestions(suggestions);
     } else {
       // Static fallback options if generation fails
-      setPoliteSuggestions([
-        "Please don't call me names, let's keep our conversation friendly! 😊",
-        "I want to keep our chats kind and fun. Let's talk about something else! 👍",
-        "Let's be nice to each other. What games are you playing today? 🎮"
-      ]);
+      if (safetyCategory === 'IGNORE_PIVOT') {
+        setPoliteSuggestions([
+          "I don't share my personal info online, let's talk about games instead! 🎮",
+          "My parents say I shouldn't give out my details. What is your favorite hobby? ⚽",
+          "Let's talk about something else! Did you do the homework today? 📚"
+        ]);
+      } else if (safetyCategory === 'TELL_ADULT') {
+        setPoliteSuggestions([
+          "I don't think that is safe. I'm going to tell my parents. 👩",
+          "Let's check in with a parent first before talking about this! 👍",
+          "I'm not allowed to talk about that online. Let's change the subject! 😊"
+        ]);
+      } else {
+        setPoliteSuggestions([
+          "Please don't call me names, let's keep our conversation friendly! 😊",
+          "I want to keep our chats kind and fun. Let's talk about something else! 👍",
+          "Let's be nice to each other. What games are you playing today? 🎮"
+        ]);
+      }
     }
   };
 
@@ -2091,6 +2105,14 @@ export default function App() {
           "Let's play some video games after homework is done! 🎮"
         ];
         replyText = staticGoodReplies[Math.floor(Math.random() * staticGoodReplies.length)];
+      } else if (type === 'info') {
+        const staticInfoReplies = [
+          "Where do you live? Can I come over to your house? 🏠",
+          "What is your phone number so I can call you? 📞",
+          "What school do you go to? Are you home alone? 🏫",
+          "What is your email or password for your gaming account? 🔒"
+        ];
+        replyText = staticInfoReplies[Math.floor(Math.random() * staticInfoReplies.length)];
       } else {
         replyText = "Why do you always fail? 😡";
       }
@@ -2352,14 +2374,21 @@ export default function App() {
                 onPress={() => triggerSimulationMessage('good')}
                 activeOpacity={0.7}
               >
-                <Text style={styles.simBtnText}>😇 Good message</Text>
+                <Text style={styles.simBtnText}>😇 Good msg</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.simBtn, styles.simBtnBad]} 
                 onPress={() => triggerSimulationMessage('bad')}
                 activeOpacity={0.7}
               >
-                <Text style={styles.simBtnText}>😈 Bad message</Text>
+                <Text style={styles.simBtnText}>😈 Bad msg</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.simBtn, styles.simBtnInfo]} 
+                onPress={() => triggerSimulationMessage('info')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.simBtnText}>🔒 Ask Info</Text>
               </TouchableOpacity>
             </View>
 
@@ -2512,8 +2541,14 @@ export default function App() {
                         {pendingImage 
                           ? "This image looks mean. Reconsider sending?"
                           : pendingText 
-                            ? "This message looks mean. Reconsider sending?"
-                            : "That message looks mean. How should we reply?"}
+                            ? (safetyCategory === 'IGNORE_PIVOT' 
+                                ? "This contains personal info. Reconsider sending?"
+                                : "This message looks mean. Reconsider sending?")
+                            : (safetyCategory === 'IGNORE_PIVOT'
+                                ? "This person is asking for personal info. How should we reply?"
+                                : safetyCategory === 'TELL_ADULT'
+                                  ? "This message might not be safe. How should we reply?"
+                                  : "That message looks mean. How should we reply?")}
                       </Text>
                       
                       {/* Safety Options */}
@@ -3822,6 +3857,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FCA5A5',
+  },
+  simBtnInfo: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
   },
   simBtnText: {
     fontSize: 13,

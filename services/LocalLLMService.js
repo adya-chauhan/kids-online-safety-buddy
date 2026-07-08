@@ -121,6 +121,10 @@ export const generateSimulatedMessage = async (contactName, contactBio, type) =>
     prompt = `You are roleplaying as ${contactName}, a child's friend. Personality: "${contactBio}".
 Write a friendly, normal, kind chat message (1 sentence, max 15 words) about typical school, games, toys, or hobbies (e.g. "I love playing basketball" or "Let's work on our homework together!").
 Do not repeat or make it mean. Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
+  } else if (type === 'info') {
+    prompt = `You are roleplaying as ${contactName}, a child's friend.
+Write a chat message (1 sentence, max 15 words) asking the child for their private/personal information (e.g., "where do you live?", "what's your phone number?", "what school do you go to?", or "are your parents home?").
+Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
   } else {
     prompt = `You are roleplaying as ${contactName}, a child's friend.
 Write a mean, rude, or insulting chat message (1 sentence, max 15 words) that makes fun of someone, calls them a loser/ugly/stupid, or tells them to go away.
