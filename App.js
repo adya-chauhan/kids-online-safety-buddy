@@ -519,6 +519,49 @@ export default function App() {
 
   const naviAnim = useRef(new Animated.Value(0)).current;
 
+  // Calling state variables
+  const [callStatus, setCallStatus] = useState('ringing'); // 'ringing' | 'connected'
+  const [callTimer, setCallTimer] = useState(0); // seconds
+  const [isMuted, setIsMuted] = useState(false);
+  const [isSpeaker, setIsSpeaker] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+
+  useEffect(() => {
+    let ringTimeout;
+    if (activeCall) {
+      setCallStatus('ringing');
+      setCallTimer(0);
+      setIsMuted(false);
+      setIsSpeaker(false);
+      setIsVideoOff(false);
+
+      // Ring for 2 seconds then connect
+      ringTimeout = setTimeout(() => {
+        setCallStatus('connected');
+      }, 2000);
+    } else {
+      setCallStatus('ringing');
+      setCallTimer(0);
+    }
+    return () => clearTimeout(ringTimeout);
+  }, [activeCall]);
+
+  useEffect(() => {
+    let timerInterval;
+    if (activeCall && callStatus === 'connected') {
+      timerInterval = setInterval(() => {
+        setCallTimer(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(timerInterval);
+  }, [activeCall, callStatus]);
+
+  const formatCallTime = (totalSeconds) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const activeChatRef = useRef(activeChat);
   useEffect(() => {
     activeChatRef.current = activeChat;
@@ -3057,24 +3100,115 @@ export default function App() {
         {/* Mock Call Overlay */}
         <Modal
           visible={activeCall !== null}
-          animationType="fade"
-          transparent={true}
+          animationType="slide"
+          transparent={false}
           onRequestClose={() => setActiveCall(null)}
         >
-          <View style={styles.callOverlay}>
-            <View style={styles.callModalCard}>
-              <Text style={styles.callMascotEmoji}>{activeCall?.type === 'video' ? '📹' : '📞'}</Text>
-              <Text style={styles.callTitle}>
-                {activeCall?.type === 'video' ? 'Video Calling...' : 'Calling...'}
-              </Text>
-              <Text style={styles.callContactName}>{activeCall?.contactName}</Text>
-              <Text style={styles.callTimer}>Navi is securing this call 🛡️</Text>
-              
+          <View style={styles.fullscreenCallContainer}>
+            {/* Background for Video Call */}
+            {activeCall?.type === 'video' && !isVideoOff && (
+              <View style={styles.callVideoBackground}>
+                <View style={styles.simulatedVideoPlaceholder}>
+                  <Text style={styles.simulatedVideoEmoji}>🧑‍💻</Text>
+                  <Text style={styles.simulatedVideoText}>Simulated Video Feed</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Top Bar: Status, Name, Timer */}
+            <SafeAreaView style={styles.callHeaderArea}>
+              <View style={styles.callHeaderContent}>
+                <View style={styles.callSecurePill}>
+                  <Text style={styles.callSecurePillText}>🛡️ Secured by Navi</Text>
+                </View>
+                <Text style={styles.callContactNameText}>{activeCall?.contactName}</Text>
+                <Text style={styles.callStatusText}>
+                  {callStatus === 'ringing' ? 'Ringing...' : 'Connected'}
+                </Text>
+                {callStatus === 'connected' && (
+                  <Text style={styles.callTimerText}>{formatCallTime(callTimer)}</Text>
+                )}
+              </View>
+            </SafeAreaView>
+
+            {/* Center Area (Audio Call or Video Call when video is disabled) */}
+            {(activeCall?.type === 'voice' || (activeCall?.type === 'video' && isVideoOff)) && (
+              <View style={styles.callCenterArea}>
+                <View style={styles.pulseContainer}>
+                  {/* Glowing Pulse Rings */}
+                  <View style={[styles.pulseRing, { width: 160, height: 160, borderRadius: 80, opacity: 0.15 }]} />
+                  <View style={[styles.pulseRing, { width: 200, height: 200, borderRadius: 100, opacity: 0.08 }]} />
+                  
+                  {/* Large Avatar */}
+                  <View style={styles.largeCallAvatar}>
+                    <Text style={styles.largeCallAvatarText}>
+                      {activeCall?.contactName ? activeCall.contactName.charAt(0).toUpperCase() : '?'}
+                    </Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.audioCallingIndicator}>
+                  {callStatus === 'ringing' ? '☎️ Dialing secure line...' : '🔊 Audio Active'}
+                </Text>
+              </View>
+            )}
+
+            {/* Picture-in-Picture (PiP) user camera preview (Video calls only) */}
+            {activeCall?.type === 'video' && (
+              <View style={styles.userPipPreview}>
+                {isVideoOff ? (
+                  <View style={styles.pipVideoOff}>
+                    <Text style={{ fontSize: 16 }}>🔇</Text>
+                    <Text style={styles.pipText}>Video Off</Text>
+                  </View>
+                ) : (
+                  <View style={styles.pipVideoOn}>
+                    <Text style={styles.pipEmoji}>🧒</Text>
+                    <Text style={styles.pipLabel}>You</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Bottom Controls Floating Container */}
+            <View style={styles.callControlsContainer}>
+              <View style={styles.callControlsRow}>
+                {/* Mute button */}
+                <TouchableOpacity 
+                  style={[styles.callBtnRound, isMuted && styles.callBtnActive]}
+                  onPress={() => setIsMuted(!isMuted)}
+                >
+                  <Text style={styles.callBtnEmoji}>{isMuted ? '🔇' : '🎙️'}</Text>
+                  <Text style={styles.callBtnLabel}>Mute</Text>
+                </TouchableOpacity>
+
+                {/* Speaker button */}
+                <TouchableOpacity 
+                  style={[styles.callBtnRound, isSpeaker && styles.callBtnActive]}
+                  onPress={() => setIsSpeaker(!isSpeaker)}
+                >
+                  <Text style={styles.callBtnEmoji}>{isSpeaker ? '🔈' : '🔊'}</Text>
+                  <Text style={styles.callBtnLabel}>Speaker</Text>
+                </TouchableOpacity>
+
+                {/* Video Call Camera Switch toggle */}
+                {activeCall?.type === 'video' && (
+                  <TouchableOpacity 
+                    style={[styles.callBtnRound, isVideoOff && styles.callBtnActive]}
+                    onPress={() => setIsVideoOff(!isVideoOff)}
+                  >
+                    <Text style={styles.callBtnEmoji}>{isVideoOff ? '📹' : '📷'}</Text>
+                    <Text style={styles.callBtnLabel}>Camera</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* End Call Button */}
               <TouchableOpacity 
-                style={styles.callDeclineBtn}
+                style={styles.endCallCircularBtn}
                 onPress={() => setActiveCall(null)}
               >
-                <Text style={styles.callDeclineBtnText}>End Call</Text>
+                <Text style={styles.endCallEmoji}>📞</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -5079,65 +5213,218 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   // Call Overlay styles
-  callOverlay: {
+  fullscreenCallContainer: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    backgroundColor: '#0B0F19',
+    justifyContent: 'space-between',
+    paddingBottom: 40,
+  },
+  callVideoBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-    zIndex: 999,
   },
-  callModalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    padding: 32,
+  simulatedVideoPlaceholder: {
     alignItems: 'center',
-    width: '85%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
   },
-  callMascotEmoji: {
-    fontSize: 48,
+  simulatedVideoEmoji: {
+    fontSize: 72,
     marginBottom: 16,
   },
-  callTitle: {
+  simulatedVideoText: {
+    fontSize: 16,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  callHeaderArea: {
+    zIndex: 10,
+  },
+  callHeaderContent: {
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
+  },
+  callSecurePill: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  callSecurePillText: {
     fontSize: 12,
+    color: '#34D399',
     fontWeight: '800',
-    color: '#3B82F6',
-    marginBottom: 4,
-    textTransform: 'uppercase',
+  },
+  callContactNameText: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  callStatusText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  callTimerText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginTop: 8,
     letterSpacing: 1,
   },
-  callContactName: {
-    fontSize: 24,
-    fontWeight: '950',
-    color: '#0F172A',
-    marginBottom: 8,
+  callCenterArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  callTimer: {
-    fontSize: 13,
-    color: '#10B981',
+  pulseContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    height: 240,
+    width: 240,
+  },
+  pulseRing: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+  },
+  largeCallAvatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+    zIndex: 2,
+  },
+  largeCallAvatarText: {
+    fontSize: 48,
+    color: '#FFFFFF',
+    fontWeight: '900',
+  },
+  audioCallingIndicator: {
+    fontSize: 14,
+    color: '#64748B',
     fontWeight: '700',
+    marginTop: 24,
+  },
+  userPipPreview: {
+    position: 'absolute',
+    top: 140,
+    right: 20,
+    width: 110,
+    height: 160,
+    borderRadius: 16,
+    backgroundColor: '#1E293B',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 100,
+  },
+  pipVideoOff: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+  },
+  pipText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  pipVideoOn: {
+    flex: 1,
+    backgroundColor: '#2563EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pipEmoji: {
+    fontSize: 32,
+    marginBottom: 4,
+  },
+  pipLabel: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  callControlsContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    zIndex: 20,
+  },
+  callControlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 32,
     marginBottom: 32,
   },
-  callDeclineBtn: {
-    backgroundColor: '#EF4444',
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    borderRadius: 24,
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+  callBtnRound: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  callDeclineBtnText: {
+  callBtnActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  callBtnEmoji: {
+    fontSize: 24,
+  },
+  callBtnLabel: {
+    position: 'absolute',
+    bottom: -22,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+    width: 80,
+    textAlign: 'center',
+  },
+  endCallCircularBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+    transform: [{ rotate: '135deg' }],
+  },
+  endCallEmoji: {
+    fontSize: 32,
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '850',
   },
   // Resources Screen Styles
   resourceIntroCard: {
