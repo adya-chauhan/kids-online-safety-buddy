@@ -525,6 +525,7 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaker, setIsSpeaker] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [incomingCall, setIncomingCall] = useState(null); // { senderId, senderName, type }
 
   useEffect(() => {
     let ringTimeout;
@@ -535,10 +536,17 @@ export default function App() {
       setIsSpeaker(false);
       setIsVideoOff(false);
 
-      // Ring for 2 seconds then connect
-      ringTimeout = setTimeout(() => {
-        setCallStatus('connected');
-      }, 2000);
+      const isSimulated = !activeCall.contactId || 
+                          activeCall.contactId === '4' || 
+                          activeCall.contactId === '5' || 
+                          activeCall.contactId === 'trusted_adult';
+
+      if (isSimulated) {
+        // Ring for 2 seconds then connect automatically
+        ringTimeout = setTimeout(() => {
+          setCallStatus('connected');
+        }, 2000);
+      }
     } else {
       setCallStatus('ringing');
       setCallTimer(0);
@@ -566,6 +574,11 @@ export default function App() {
   useEffect(() => {
     activeChatRef.current = activeChat;
   }, [activeChat]);
+
+  const activeCallRef = useRef(activeCall);
+  useEffect(() => {
+    activeCallRef.current = activeCall;
+  }, [activeCall]);
 
   useEffect(() => {
     const loadUserAndInitSupabase = async () => {
@@ -616,6 +629,44 @@ export default function App() {
             // Subscribe to messages
             const subscription = subscribeToRealtimeMessages(parsedUser.id, (newMsg) => {
               const senderId = newMsg.sender_id;
+              const textStr = newMsg.text || "";
+
+              // Handle Call Signaling
+              if (textStr.startsWith('__CALL_')) {
+                const nowMs = Date.now();
+                const msgMs = new Date(newMsg.created_at).getTime();
+                const isRecent = (nowMs - msgMs) < 25000; // within 25 seconds
+
+                if (isRecent) {
+                  if (textStr.startsWith('__CALL_INITIATED_')) {
+                    const type = textStr.includes('VIDEO') ? 'video' : 'voice';
+                    setProfiles(prev => {
+                      const caller = prev.find(p => p.id === senderId);
+                      setIncomingCall({
+                        senderId,
+                        senderName: caller ? caller.name : 'Someone',
+                        type
+                      });
+                      return prev;
+                    });
+                  } else if (textStr === '__CALL_ACCEPTED__') {
+                    if (activeCallRef.current && activeCallRef.current.contactId === senderId) {
+                      setCallStatus('connected');
+                    }
+                  } else if (textStr === '__CALL_DECLINED__') {
+                    if (activeCallRef.current && activeCallRef.current.contactId === senderId) {
+                      setActiveCall(null);
+                      Alert.alert("Call Declined", `${activeCallRef.current.contactName} declined your call.`);
+                    }
+                  } else if (textStr === '__CALL_ENDED__') {
+                    if (activeCallRef.current && activeCallRef.current.contactId === senderId) {
+                      setActiveCall(null);
+                    }
+                  }
+                }
+                return; // Suppress from normal chat messages timeline
+              }
+
               const now = new Date(newMsg.created_at);
               const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -1889,6 +1940,58 @@ export default function App() {
     }
   };
 
+  const startCall = (type) => {
+    if (!activeChat) return;
+    setActiveCall({ contactId: activeChat.id, contactName: activeChat.name, type });
+    if (supabase && !activeChat.is_simulated && currentUser) {
+      const signalingText = `__CALL_INITIATED_${type.toUpperCase()}__`;
+      sendSupabaseMessage(currentUser.id, activeChat.id, signalingText);
+    }
+  };
+
+  const startCallWithProfile = (profile, type) => {
+    if (!profile) return;
+    setActiveCall({ contactId: profile.id, contactName: profile.name, type });
+    if (supabase && !profile.is_simulated && currentUser) {
+      const signalingText = `__CALL_INITIATED_${type.toUpperCase()}__`;
+      sendSupabaseMessage(currentUser.id, profile.id, signalingText);
+    }
+  };
+
+  const endCall = () => {
+    if (activeCallRef.current) {
+      const { contactId } = activeCallRef.current;
+      const isSimulated = !contactId || 
+                          contactId === '4' || 
+                          contactId === '5' || 
+                          contactId === 'trusted_adult';
+      if (supabase && currentUser && contactId && !isSimulated) {
+        sendSupabaseMessage(currentUser.id, contactId, '__CALL_ENDED__');
+      }
+    }
+    setActiveCall(null);
+  };
+
+  const acceptCall = () => {
+    if (!incomingCall) return;
+    const { senderId, senderName, type } = incomingCall;
+    if (supabase && currentUser) {
+      sendSupabaseMessage(currentUser.id, senderId, '__CALL_ACCEPTED__');
+    }
+    setActiveCall({ contactId: senderId, contactName: senderName, type, isIncoming: true });
+    setCallStatus('connected');
+    setIncomingCall(null);
+  };
+
+  const declineCall = () => {
+    if (!incomingCall) return;
+    const { senderId } = incomingCall;
+    if (supabase && currentUser) {
+      sendSupabaseMessage(currentUser.id, senderId, '__CALL_DECLINED__');
+    }
+    setIncomingCall(null);
+  };
+
   const handleSaveTrustedAdult = async (name, phone, relation) => {
     if (!name.trim() || !phone.trim() || !relation.trim()) {
       Alert.alert("Error", "Please fill in all the details.");
@@ -2549,7 +2652,7 @@ export default function App() {
               <View style={styles.chatHeaderCallingOval}>
                 <TouchableOpacity 
                   style={styles.chatHeaderCallingBtn}
-                  onPress={() => setActiveCall({ contactName: activeChat.name, type: 'video' })}
+                  onPress={() => startCall('video')}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.chatHeaderCallingText}>📹</Text>
@@ -2557,7 +2660,7 @@ export default function App() {
                 <View style={styles.chatHeaderCallingDivider} />
                 <TouchableOpacity 
                   style={styles.chatHeaderCallingBtn}
-                  onPress={() => setActiveCall({ contactName: activeChat.name, type: 'voice' })}
+                  onPress={() => startCall('voice')}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.chatHeaderCallingText}>📞</Text>
@@ -3013,7 +3116,7 @@ export default function App() {
                   <View style={styles.modalCallingOval}>
                     <TouchableOpacity 
                       style={styles.modalCallingIconBtn}
-                      onPress={() => setActiveCall({ contactName: selectedProfile.name, type: 'video' })}
+                      onPress={() => { setSelectedProfile(null); startCallWithProfile(selectedProfile, 'video'); }}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.modalCallingIconText}>📹</Text>
@@ -3021,7 +3124,7 @@ export default function App() {
                     <View style={styles.modalCallingDivider} />
                     <TouchableOpacity 
                       style={styles.modalCallingIconBtn}
-                      onPress={() => setActiveCall({ contactName: selectedProfile.name, type: 'voice' })}
+                      onPress={() => { setSelectedProfile(null); startCallWithProfile(selectedProfile, 'voice'); }}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.modalCallingIconText}>📞</Text>
@@ -3102,7 +3205,7 @@ export default function App() {
           visible={activeCall !== null}
           animationType="slide"
           transparent={false}
-          onRequestClose={() => setActiveCall(null)}
+          onRequestClose={() => endCall()}
         >
           <View style={styles.fullscreenCallContainer}>
             {/* Background for Video Call */}
@@ -3206,10 +3309,57 @@ export default function App() {
               {/* End Call Button */}
               <TouchableOpacity 
                 style={styles.endCallCircularBtn}
-                onPress={() => setActiveCall(null)}
+                onPress={() => endCall()}
               >
                 <Text style={styles.endCallEmoji}>📞</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Incoming Call Overlay */}
+        <Modal
+          visible={incomingCall !== null}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => declineCall()}
+        >
+          <View style={styles.incomingCallOverlay}>
+            <View style={styles.incomingCallCard}>
+              <View style={styles.incomingCallMascotIcon}>
+                <Text style={{ fontSize: 40 }}>📞</Text>
+              </View>
+              <Text style={styles.incomingCallTitle}>
+                {incomingCall?.type === 'video' ? 'INCOMING VIDEO CALL' : 'INCOMING AUDIO CALL'}
+              </Text>
+              <Text style={styles.incomingCallName}>{incomingCall?.senderName}</Text>
+              <Text style={styles.incomingCallSub}>Navi has verified this connection as safe 🛡️</Text>
+              
+              <View style={styles.incomingCallActionsRow}>
+                {/* Decline Button container */}
+                <View style={{ alignItems: 'center', flex: 1 }}>
+                  <TouchableOpacity 
+                    style={[styles.incomingCallRoundBtn, { backgroundColor: '#EF4444' }]}
+                    onPress={declineCall}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.callActionEmoji, { transform: [{ rotate: '135deg' }] }]}>📞</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.callActionLabelText}>Decline</Text>
+                </View>
+
+                {/* Accept Button container */}
+                <View style={{ alignItems: 'center', flex: 1 }}>
+                  <TouchableOpacity 
+                    style={[styles.incomingCallRoundBtn, { backgroundColor: '#10B981' }]}
+                    onPress={acceptCall}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.callActionEmoji}>📞</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.callActionLabelText}>Accept</Text>
+                </View>
+              </View>
             </View>
           </View>
         </Modal>
@@ -5425,6 +5575,89 @@ const styles = StyleSheet.create({
   endCallEmoji: {
     fontSize: 32,
     color: '#FFFFFF',
+  },
+  // Incoming Call Overlay styles
+  incomingCallOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    zIndex: 10000,
+  },
+  incomingCallCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 28,
+    padding: 32,
+    alignItems: 'center',
+    width: '90%',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  incomingCallMascotIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: '#3B82F6',
+  },
+  incomingCallTitle: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#3B82F6',
+    marginBottom: 8,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  incomingCallName: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  incomingCallSub: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '700',
+    marginBottom: 36,
+  },
+  incomingCallActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 16,
+    gap: 32,
+  },
+  incomingCallRoundBtn: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  callActionEmoji: {
+    fontSize: 24,
+    color: '#FFFFFF',
+  },
+  callActionLabelText: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textAlign: 'center',
   },
   // Resources Screen Styles
   resourceIntroCard: {
