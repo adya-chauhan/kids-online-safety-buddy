@@ -489,6 +489,12 @@ export default function App() {
   const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
 
+  const [trustedAdult, setTrustedAdult] = useState(null);
+  const [addAdultModalVisible, setAddAdultModalVisible] = useState(false);
+  const [adultName, setAdultName] = useState('');
+  const [adultPhone, setAdultPhone] = useState('');
+  const [adultRelation, setAdultRelation] = useState('');
+
   const [naviRating, setNaviRating] = useState(null);
 
   // Interception states for safety reviews
@@ -619,6 +625,41 @@ export default function App() {
     };
 
     loadUserAndInitSupabase();
+  }, []);
+
+  // Load Trusted Adult on mount
+  useEffect(() => {
+    const loadTrustedAdultAndProfiles = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('navi_trusted_adult');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setTrustedAdult(parsed);
+          setProfiles(prev => {
+            if (!prev.some(p => p.id === 'trusted_adult')) {
+              return [
+                ...prev,
+                {
+                  id: 'trusted_adult',
+                  name: parsed.name,
+                  phone: parsed.phone,
+                  role: `${parsed.relation} 🛡️ (Trusted Adult)`,
+                  bio: `My designated trusted adult for safety alerts.`,
+                  avatar: null,
+                  time: 'Just now',
+                  unread: 0,
+                  is_simulated: true
+                }
+              ];
+            }
+            return prev;
+          });
+        }
+      } catch (e) {
+        console.error("Error loading trusted adult:", e);
+      }
+    };
+    loadTrustedAdultAndProfiles();
   }, []);
 
   useEffect(() => {
@@ -1133,6 +1174,48 @@ export default function App() {
               <Text style={styles.settingsProfileDesc}>{currentUser?.phone ? `+${currentUser.phone}` : 'Child Account'}</Text>
             </View>
           </View>
+
+          {/* Trusted Adult Section for Kid Accounts */}
+          {(!currentUser || currentUser?.role?.toLowerCase().includes('kid')) && (
+            <View style={styles.trustedAdultSection}>
+              <Text style={styles.trustedAdultSectionTitle}>🛡️ Trusted Adult Contact</Text>
+              {trustedAdult ? (
+                <View style={styles.trustedAdultCard}>
+                  <View style={styles.trustedAdultDetails}>
+                    <Text style={styles.trustedAdultNameText}>{trustedAdult.name}</Text>
+                    <Text style={styles.trustedAdultPhoneText}>{trustedAdult.relation} • {trustedAdult.phone}</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.trustedAdultEditBtn} 
+                    onPress={() => {
+                      setAdultName(trustedAdult.name);
+                      setAdultPhone(trustedAdult.phone);
+                      setAdultRelation(trustedAdult.relation);
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setAddAdultModalVisible(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.trustedAdultEditBtnText}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity 
+                  style={styles.trustedAdultAddBtn}
+                  onPress={() => {
+                    setAdultName('');
+                    setAdultPhone('');
+                    setAdultRelation('');
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setAddAdultModalVisible(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.trustedAdultAddBtnText}>＋ Add Trusted Adult</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
 
           {/* Settings Options List */}
           <View style={styles.settingsListCard}>
@@ -1705,6 +1788,46 @@ export default function App() {
     if (daddyProfile) {
       openChat(daddyProfile);
     }
+  };
+
+  const messageTrustedAdultAction = () => {
+    setAdultAlertVisible(false);
+    const adultProfile = profiles.find(p => p.id === 'trusted_adult');
+    if (adultProfile) {
+      openChat(adultProfile);
+    }
+  };
+
+  const handleSaveTrustedAdult = async (name, phone, relation) => {
+    if (!name.trim() || !phone.trim() || !relation.trim()) {
+      Alert.alert("Error", "Please fill in all the details.");
+      return;
+    }
+    const newAdult = { name: name.trim(), phone: phone.trim(), relation: relation.trim() };
+    setTrustedAdult(newAdult);
+    await AsyncStorage.setItem('navi_trusted_adult', JSON.stringify(newAdult));
+    
+    // Add/Update in profiles state
+    setProfiles(prev => {
+      const filtered = prev.filter(p => p.id !== 'trusted_adult');
+      return [
+        ...filtered,
+        {
+          id: 'trusted_adult',
+          name: newAdult.name,
+          phone: newAdult.phone,
+          role: `${newAdult.relation} 🛡️ (Trusted Adult)`,
+          bio: `My designated trusted adult for safety alerts.`,
+          avatar: null,
+          time: 'Just now',
+          unread: 0,
+          is_simulated: true
+        }
+      ];
+    });
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setAddAdultModalVisible(false);
+    Alert.alert("Success", `${newAdult.name} has been added as your trusted adult!`);
   };
 
   // Swipe to dismiss bottom sheet logic
@@ -2918,15 +3041,27 @@ export default function App() {
         >
           <View style={styles.adultAlertOverlay}>
             <View style={styles.adultAlertContainer}>
-              <Text style={styles.adultAlertHeader}>❤️ Talk to a Trusted Adult</Text>
+              <Text style={styles.adultAlertHeader}>🛡️ Talk to a Trusted Adult</Text>
               <Text style={styles.adultAlertBody}>
                 If someone says something online that makes you feel uncomfortable, worried, or sad, you should always tell an adult you trust (like Mom, Dad, a grandparent, or a teacher).
               </Text>
               <Text style={styles.adultAlertSub}>
-                Would you like to send a quick message to Mommy or Daddy right now to check in?
+                {trustedAdult 
+                  ? `Would you like to send a quick message to your trusted adult, ${trustedAdult.name} (${trustedAdult.relation}), right now to check in?`
+                  : `Would you like to send a quick message to Mommy or Daddy right now to check in?`
+                }
               </Text>
               
               <View style={styles.adultAlertActions}>
+                {trustedAdult && (
+                  <TouchableOpacity 
+                    style={[styles.adultAlertBtnPrimary, { backgroundColor: '#2563EB', marginBottom: 8 }]} 
+                    onPress={messageTrustedAdultAction}
+                  >
+                    <Text style={styles.adultAlertBtnPrimaryText}>Message {trustedAdult.name} ({trustedAdult.relation}) 🛡️</Text>
+                  </TouchableOpacity>
+                )}
+                
                 <TouchableOpacity 
                   style={styles.adultAlertBtnPrimary} 
                   onPress={messageMommyAction}
@@ -2950,6 +3085,92 @@ export default function App() {
               </View>
             </View>
           </View>
+        </Modal>
+
+        {/* Add Trusted Adult Modal */}
+        <Modal
+          visible={addAdultModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setAddAdultModalVisible(false);
+          }}
+        >
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <TouchableWithoutFeedback onPress={() => {
+              Keyboard.dismiss();
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setAddAdultModalVisible(false);
+            }}>
+              <View style={styles.modalOverlay}>
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                  <View style={[styles.modalContainer, { padding: 24 }]}>
+                    <View style={styles.dragHandleArea}>
+                      <View style={styles.modalDragHandle} />
+                    </View>
+
+                    <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 6, color: '#1E3A8A', textAlign: 'center' }}>
+                      🛡️ Add a Trusted Adult
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 20, textAlign: 'center', paddingHorizontal: 10 }}>
+                      This is the adult you can contact immediately if someone makes you feel uncomfortable or unsafe online.
+                    </Text>
+
+                    <Text style={styles.inputLabel}>Adult's Name</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="e.g. Aunt Sarah, Coach Dave"
+                      placeholderTextColor="#94A3B8"
+                      value={adultName}
+                      onChangeText={setAdultName}
+                    />
+
+                    <Text style={styles.inputLabel}>Phone Number</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="e.g. 555-0199"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="phone-pad"
+                      value={adultPhone}
+                      onChangeText={setAdultPhone}
+                    />
+
+                    <Text style={styles.inputLabel}>Relationship</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      placeholder="e.g. Aunt, Teacher, Grandma"
+                      placeholderTextColor="#94A3B8"
+                      value={adultRelation}
+                      onChangeText={setAdultRelation}
+                    />
+
+                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+                      <TouchableOpacity 
+                        style={[styles.modalBtn, { flex: 1, backgroundColor: '#F1F5F9' }]}
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          setAddAdultModalVisible(false);
+                        }}
+                      >
+                        <Text style={[styles.modalBtnText, { color: '#64748B' }]}>Cancel</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity 
+                        style={[styles.modalBtn, { flex: 1, backgroundColor: '#2563EB' }]}
+                        onPress={() => handleSaveTrustedAdult(adultName, adultPhone, adultRelation)}
+                      >
+                        <Text style={[styles.modalBtnText, { color: '#FFFFFF' }]}>Save</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Add Contact Modal */}
@@ -4989,6 +5210,101 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  trustedAdultSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  trustedAdultSectionTitle: {
+    fontSize: 14,
+    fontWeight: '850',
+    color: '#1E3A8A',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  trustedAdultCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  trustedAdultDetails: {
+    flex: 1,
+    marginRight: 12,
+  },
+  trustedAdultNameText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  trustedAdultPhoneText: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  trustedAdultEditBtn: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  trustedAdultEditBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  trustedAdultAddBtn: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#3B82F6',
+  },
+  trustedAdultAddBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#2563EB',
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 6,
+  },
+  formInput: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: '#1E293B',
+    marginBottom: 16,
+    backgroundColor: '#F8FAFC'
+  },
+  modalBtn: {
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
   },
   settingsAvatarCircle: {
     width: 52,
