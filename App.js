@@ -1688,34 +1688,27 @@ export default function App() {
       if (supabase) {
         // Check if user already exists
         const existing = await fetchProfileByPhone(cleanPhone);
+        
+        // Build user profile using the form values entered by the user
+        const userProfile = {
+          id: cleanPhone,
+          name: regName.trim(),
+          role: regRole,
+          phone: cleanPhone,
+          bio: regBio.trim(),
+          avatar_url: existing?.avatar_url || '',
+          is_simulated: false
+        };
+
+        // Upsert to Supabase so it updates the name/bio/role if they already exist
+        await upsertProfile(userProfile);
+        await AsyncStorage.setItem('navi_user_profile', JSON.stringify(userProfile));
+        setCurrentUser(userProfile);
+
         if (existing) {
-          const userProfile = {
-            id: existing.id,
-            name: existing.name,
-            role: existing.role || 'Kid 👧',
-            phone: cleanPhone,
-            bio: existing.bio || '',
-            avatar_url: existing.avatar_url || '',
-            is_simulated: false
-          };
-          await AsyncStorage.setItem('navi_user_profile', JSON.stringify(userProfile));
-          setCurrentUser(userProfile);
-          Alert.alert("Welcome Back!", `Logged in as ${existing.name}.`);
+          Alert.alert("Welcome Back!", `Logged in as ${regName.trim()}.`);
         } else {
-          // Create new user profile in Supabase
-          const userProfile = {
-            id: cleanPhone,
-            name: regName.trim(),
-            role: regRole,
-            phone: cleanPhone,
-            bio: regBio.trim(),
-            avatar_url: '',
-            is_simulated: false
-          };
-          await upsertProfile(userProfile);
-          await AsyncStorage.setItem('navi_user_profile', JSON.stringify(userProfile));
-          setCurrentUser(userProfile);
-          Alert.alert("Registration Complete", `Welcome to Navi, ${regName}!`);
+          Alert.alert("Registration Complete", `Welcome to Navi, ${regName.trim()}!`);
         }
       } else {
         const userProfile = {
