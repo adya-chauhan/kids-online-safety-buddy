@@ -452,73 +452,7 @@ const RenderAvatar = ({ name, avatar, style }) => {
   );
 };
 
-const SwipeableProfileCard = ({ profile, children, onDelete }) => {
-  const pan = useRef(new Animated.ValueXY()).current;
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (evt, gestureState) => {
-        // Active horizontal swipe to the right
-        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 8 && gestureState.dx > 0;
-      },
-      onPanResponderGrant: () => {
-        pan.setValue({ x: 0, y: 0 });
-      },
-      onPanResponderMove: (evt, gestureState) => {
-        if (gestureState.dx > 0) {
-          pan.setValue({ x: gestureState.dx, y: 0 });
-        }
-      },
-      onPanResponderRelease: (evt, gestureState) => {
-        if (gestureState.dx > 120) {
-          Animated.timing(pan, {
-            toValue: { x: 500, y: 0 },
-            duration: 200,
-            useNativeDriver: false,
-          }).start(() => {
-            onDelete(profile.id);
-          });
-        } else {
-          Animated.spring(pan, {
-            toValue: { x: 0, y: 0 },
-            friction: 5,
-            useNativeDriver: false,
-          }).start();
-        }
-      },
-    })
-  ).current;
-
-  return (
-    <View style={{ position: 'relative', overflow: 'hidden', borderRadius: 18, marginBottom: 12 }}>
-      {/* Background delete visual clue */}
-      <View style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: '#EF4444',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingLeft: 20,
-        borderRadius: 18,
-      }}>
-        <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 16 }}>🗑️ Delete Chat</Text>
-      </View>
-
-      {/* Swipeable foreground card */}
-      <Animated.View
-        style={{
-          transform: [{ translateX: pan.x }]
-        }}
-        {...panResponder.panHandlers}
-      >
-        {children}
-      </Animated.View>
-    </View>
-  );
-};
 
 export default function App() {
   const [profiles, setProfiles] = useState(initialProfilesData.map(p => ({ ...p, is_simulated: true })));
@@ -749,10 +683,7 @@ export default function App() {
     setSelectModeActive(false);
   };
 
-  const handleDeleteProfile = (profileId) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setProfiles(prev => prev.filter(p => p.id !== profileId));
-  };
+
 
   const handleMarkReadSelected = () => {
     setProfiles(prev => prev.map(p => 
@@ -2767,26 +2698,21 @@ export default function App() {
                     filteredProfiles.map(profile => {
                       const isSelected = selectedChatIds.includes(profile.id);
                       return (
-                        <SwipeableProfileCard 
-                          key={profile.id} 
-                          profile={profile} 
-                          onDelete={handleDeleteProfile}
+                        <TouchableOpacity
+                          key={profile.id}
+                          style={[
+                            styles.profileCard,
+                            selectModeActive && isSelected && styles.profileCardSelected
+                          ]}
+                          onPress={() => {
+                            if (selectModeActive) {
+                              toggleChatSelection(profile.id);
+                            } else {
+                              openChat(profile);
+                            }
+                          }}
+                          activeOpacity={0.7}
                         >
-                          <TouchableOpacity
-                            style={[
-                              styles.profileCard,
-                              { marginBottom: 0 },
-                              selectModeActive && isSelected && styles.profileCardSelected
-                            ]}
-                            onPress={() => {
-                              if (selectModeActive) {
-                                toggleChatSelection(profile.id);
-                              } else {
-                                openChat(profile);
-                              }
-                            }}
-                            activeOpacity={0.7}
-                          >
                           {/* Checkbox circle when in select mode */}
                           {selectModeActive && (
                             <View style={[
@@ -2823,9 +2749,8 @@ export default function App() {
                             </View>
                           )}
                         </TouchableOpacity>
-                      </SwipeableProfileCard>
-                    );
-                  })
+                      );
+                    })
                   ) : (
                     <View style={styles.emptyContainer}>
                       <Text style={styles.emptyText}>No profiles found matching your search</Text>
@@ -3165,29 +3090,37 @@ export default function App() {
             
             <View style={styles.selectActionsGroup}>
               <TouchableOpacity 
-                style={[styles.selectActionBtn, selectedChatIds.length === 0 && styles.selectActionBtnDisabled]}
+                style={[
+                  styles.selectActionCircle, 
+                  { backgroundColor: '#3B82F6' },
+                  selectedChatIds.length === 0 && styles.selectActionBtnDisabled
+                ]}
                 onPress={handleMarkReadSelected}
                 disabled={selectedChatIds.length === 0}
                 activeOpacity={0.7}
               >
-                <Text style={styles.selectActionBtnText}>Mark Read</Text>
+                <Text style={styles.selectActionCircleText}>Read</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.selectActionBtn, styles.selectActionBtnDelete, selectedChatIds.length === 0 && styles.selectActionBtnDisabled]}
+                style={[
+                  styles.selectActionCircle, 
+                  { backgroundColor: '#EF4444' },
+                  selectedChatIds.length === 0 && styles.selectActionBtnDisabled
+                ]}
                 onPress={handleDeleteSelected}
                 disabled={selectedChatIds.length === 0}
                 activeOpacity={0.7}
               >
-                <Text style={styles.selectActionBtnTextDelete}>Delete</Text>
+                <Text style={styles.selectActionCircleText}>Delete</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.selectActionBtnCancel}
+                style={[styles.selectActionCircle, { backgroundColor: '#64748B' }]}
                 onPress={() => setSelectModeActive(false)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.selectActionBtnTextCancel}>Cancel</Text>
+                <Text style={styles.selectActionCircleText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -4210,64 +4143,54 @@ const styles = StyleSheet.create({
   // Bottom select actions bar
   selectActionsBar: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 24,
+    left: 20,
+    right: 20,
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    borderRadius: 24,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    flexDirection: 'column',
     alignItems: 'center',
+    gap: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   selectCountText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#475569',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E3A8A',
   },
   selectActionsGroup: {
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'center',
+    gap: 18,
   },
-  selectActionBtn: {
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+  selectActionCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  selectActionCircleText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   selectActionBtnDisabled: {
-    opacity: 0.5,
-  },
-  selectActionBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#3B82F6',
-  },
-  selectActionBtnDelete: {
-    backgroundColor: '#FEF2F2',
-  },
-  selectActionBtnTextDelete: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#EF4444',
-  },
-  selectActionBtnCancel: {
-    backgroundColor: '#F1F5F9',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  selectActionBtnTextCancel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#64748B',
+    opacity: 0.4,
   },
   // Tab Bar styles
   tabContentContainer: {
