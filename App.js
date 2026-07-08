@@ -452,6 +452,74 @@ const RenderAvatar = ({ name, avatar, style }) => {
   );
 };
 
+const SwipeableProfileCard = ({ profile, children, onDelete }) => {
+  const pan = useRef(new Animated.ValueXY()).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Active horizontal swipe to the right
+        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 8 && gestureState.dx > 0;
+      },
+      onPanResponderGrant: () => {
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        if (gestureState.dx > 0) {
+          pan.setValue({ x: gestureState.dx, y: 0 });
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dx > 120) {
+          Animated.timing(pan, {
+            toValue: { x: 500, y: 0 },
+            duration: 200,
+            useNativeDriver: false,
+          }).start(() => {
+            onDelete(profile.id);
+          });
+        } else {
+          Animated.spring(pan, {
+            toValue: { x: 0, y: 0 },
+            friction: 5,
+            useNativeDriver: false,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  return (
+    <View style={{ position: 'relative', overflow: 'hidden', borderRadius: 18, marginBottom: 12 }}>
+      {/* Background delete visual clue */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#EF4444',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingLeft: 20,
+        borderRadius: 18,
+      }}>
+        <Text style={{ color: '#FFFFFF', fontWeight: '900', fontSize: 16 }}>🗑️ Delete Chat</Text>
+      </View>
+
+      {/* Swipeable foreground card */}
+      <Animated.View
+        style={{
+          transform: [{ translateX: pan.x }]
+        }}
+        {...panResponder.panHandlers}
+      >
+        {children}
+      </Animated.View>
+    </View>
+  );
+};
+
 export default function App() {
   const [profiles, setProfiles] = useState(initialProfilesData.map(p => ({ ...p, is_simulated: true })));
   const [messages, setMessages] = useState(initialMessagesData);
@@ -679,6 +747,11 @@ export default function App() {
     setProfiles(prev => prev.filter(p => !selectedChatIds.includes(p.id)));
     setSelectedChatIds([]);
     setSelectModeActive(false);
+  };
+
+  const handleDeleteProfile = (profileId) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setProfiles(prev => prev.filter(p => p.id !== profileId));
   };
 
   const handleMarkReadSelected = () => {
@@ -2694,21 +2767,26 @@ export default function App() {
                     filteredProfiles.map(profile => {
                       const isSelected = selectedChatIds.includes(profile.id);
                       return (
-                        <TouchableOpacity
-                          key={profile.id}
-                          style={[
-                            styles.profileCard,
-                            selectModeActive && isSelected && styles.profileCardSelected
-                          ]}
-                          onPress={() => {
-                            if (selectModeActive) {
-                              toggleChatSelection(profile.id);
-                            } else {
-                              openChat(profile);
-                            }
-                          }}
-                          activeOpacity={0.7}
+                        <SwipeableProfileCard 
+                          key={profile.id} 
+                          profile={profile} 
+                          onDelete={handleDeleteProfile}
                         >
+                          <TouchableOpacity
+                            style={[
+                              styles.profileCard,
+                              { marginBottom: 0 },
+                              selectModeActive && isSelected && styles.profileCardSelected
+                            ]}
+                            onPress={() => {
+                              if (selectModeActive) {
+                                toggleChatSelection(profile.id);
+                              } else {
+                                openChat(profile);
+                              }
+                            }}
+                            activeOpacity={0.7}
+                          >
                           {/* Checkbox circle when in select mode */}
                           {selectModeActive && (
                             <View style={[
@@ -2745,8 +2823,9 @@ export default function App() {
                             </View>
                           )}
                         </TouchableOpacity>
-                      );
-                    })
+                      </SwipeableProfileCard>
+                    );
+                  })
                   ) : (
                     <View style={styles.emptyContainer}>
                       <Text style={styles.emptyText}>No profiles found matching your search</Text>
