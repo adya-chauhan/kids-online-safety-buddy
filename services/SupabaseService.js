@@ -130,7 +130,7 @@ export const subscribeToRealtimeMessages = (userId, onNewMessage) => {
   if (!supabase) return null;
 
   const subscription = supabase
-    .channel('realtime-messages')
+    .channel(`realtime-messages-${userId}-${Date.now()}`)
     .on(
       'postgres_changes',
       {
