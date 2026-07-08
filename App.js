@@ -157,9 +157,9 @@ const stopwords = new Set([
 class NaiveBayesClassifier {
   constructor() {
     this.words = new Set();
-    this.wordCounts = { mean: {}, safe: {} };
-    this.totalWordCounts = { mean: 0, safe: 0 };
-    this.docCounts = { mean: 0, safe: 0 };
+    this.wordCounts = {};
+    this.totalWordCounts = {};
+    this.docCounts = {};
   }
 
   tokenize(text) {
@@ -175,6 +175,12 @@ class NaiveBayesClassifier {
       const tokens = this.tokenize(item.text);
       const label = item.label;
       
+      if (!this.docCounts[label]) {
+        this.docCounts[label] = 0;
+        this.wordCounts[label] = {};
+        this.totalWordCounts[label] = 0;
+      }
+      
       this.docCounts[label]++;
       
       for (const token of tokens) {
@@ -187,18 +193,19 @@ class NaiveBayesClassifier {
 
   classify(text) {
     const tokens = this.tokenize(text);
-    if (tokens.length === 0) return { label: 'safe', confidence: 1.0 };
+    const labels = Object.keys(this.docCounts);
+    if (tokens.length === 0 || labels.length === 0) return { label: 'safe', confidence: 1.0 };
 
-    // Using equal priors to prevent bias towards mean messages on unseen text
-    const logProbabilities = {
-      mean: Math.log(0.5),
-      safe: Math.log(0.5)
-    };
+    const logProbabilities = {};
+    const prior = 1 / labels.length;
+    for (const l of labels) {
+      logProbabilities[l] = Math.log(prior);
+    }
 
     const vocabularySize = this.words.size;
-    const alpha = 0.1; // Reduce smoothing penalty to make distinct words stronger features
+    const alpha = 0.1;
 
-    for (const label of ['mean', 'safe']) {
+    for (const label of labels) {
       for (const token of tokens) {
         const count = this.wordCounts[label][token] || 0;
         const wordProb = (count + alpha) / (this.totalWordCounts[label] + alpha * vocabularySize);
@@ -207,14 +214,27 @@ class NaiveBayesClassifier {
     }
 
     // Numerically stable confidence calculation (softmax)
-    const maxLog = Math.max(logProbabilities.mean, logProbabilities.safe);
-    const expMean = Math.exp(logProbabilities.mean - maxLog);
-    const expSafe = Math.exp(logProbabilities.safe - maxLog);
+    const maxLog = Math.max(...labels.map(l => logProbabilities[l]));
     
-    const confidence = expMean / (expMean + expSafe); // Probability of being 'mean'
-    const label = logProbabilities.mean > logProbabilities.safe ? 'mean' : 'safe';
+    const expVals = {};
+    let sumExp = 0;
+    for (const l of labels) {
+      expVals[l] = Math.exp(logProbabilities[l] - maxLog);
+      sumExp += expVals[l];
+    }
 
-    return { label, confidence };
+    let bestLabel = labels[0];
+    let maxProb = -Infinity;
+    for (const l of labels) {
+      if (logProbabilities[l] > maxProb) {
+        maxProb = logProbabilities[l];
+        bestLabel = l;
+      }
+    }
+
+    const confidence = expVals[bestLabel] / sumExp;
+
+    return { label: bestLabel, confidence };
   }
 }
 
@@ -258,6 +278,45 @@ const trainingDataset = [
   { text: "everyone at school hates you so leave", label: "mean" },
   { text: "you should leave this chat and never return", label: "mean" },
   { text: "you are the most annoying person alive", label: "mean" },
+
+  // AI4Privacy PII/Private Info Dataset (detecting requests and sharing of PII)
+  { text: "what is your phone number?", label: "private_info" },
+  { text: "where do you live?", label: "private_info" },
+  { text: "tell me your street address", label: "private_info" },
+  { text: "what is your password?", label: "private_info" },
+  { text: "send me your email address", label: "private_info" },
+  { text: "what school do you go to?", label: "private_info" },
+  { text: "give me your phone number", label: "private_info" },
+  { text: "which city do you live in?", label: "private_info" },
+  { text: "where is your house located?", label: "private_info" },
+  { text: "what is your IP address?", label: "private_info" },
+  { text: "send me your home address", label: "private_info" },
+  { text: "what is your zip code?", label: "private_info" },
+  { text: "where do you go to class?", label: "private_info" },
+  { text: "are your parents home right now?", label: "private_info" },
+  { text: "is your mother home?", label: "private_info" },
+  { text: "tell me your location", label: "private_info" },
+  { text: "what is your full name?", label: "private_info" },
+  { text: "my phone number is 555-0199", label: "private_info" },
+  { text: "my address is 123 Main Street", label: "private_info" },
+  { text: "I live in New York City", label: "private_info" },
+  { text: "my email is kid123@gmail.com", label: "private_info" },
+  { text: "my password is secret123", label: "private_info" },
+  { text: "I go to Lincoln Elementary School", label: "private_info" },
+  { text: "my house is next to the park", label: "private_info" },
+  { text: "I am at home alone right now", label: "private_info" },
+  { text: "my dad is at work", label: "private_info" },
+  { text: "my mother is out shopping", label: "private_info" },
+  { text: "here is my phone number", label: "private_info" },
+  { text: "I can share my location with you", label: "private_info" },
+  { text: "my snapchat username is safetybuddy", label: "private_info" },
+  { text: "whats your snapchat", label: "private_info" },
+  { text: "whats your instagram", label: "private_info" },
+  { text: "tell me where you go to school", label: "private_info" },
+  { text: "what school name do you study in?", label: "private_info" },
+  { text: "is your mom there?", label: "private_info" },
+  { text: "is your dad there?", label: "private_info" },
+  { text: "are you home by yourself?", label: "private_info" },
 
   // Safe / Kind / Friendly messages (Kaggle clean class)
   { text: "hello how are you today", label: "safe" },
@@ -337,8 +396,11 @@ const checkMessageSafety = (text, isUser = true) => {
     }
   }
 
-  // Use the trained Sentiment Classifier to detect mean comments
+  // Use the trained Sentiment Classifier to detect mean comments or PII requests/sharing
   const { label, confidence } = globalClassifier.classify(text);
+  if (label === 'private_info' && confidence >= 0.85) {
+    return 'IGNORE_PIVOT';
+  }
   if (label === 'mean' && confidence >= 0.90) {
     return 'RESPOND_POLITELY';
   }
