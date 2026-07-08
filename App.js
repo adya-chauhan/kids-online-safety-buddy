@@ -2651,36 +2651,34 @@ export default function App() {
                     </TouchableOpacity>
                     
                     {/* Top Right Action Circles */}
-                    <View style={{ flexDirection: 'column', alignItems: 'center' }}>
-                      <View style={styles.headerTopRightActions}>
-                        <TouchableOpacity 
-                          style={styles.headerTopCircleBtn}
-                          onPress={() => alert("Open camera to share a status update! 📷")}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.headerTopCircleText}>📷</Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity 
-                          style={styles.headerTopCircleBtn}
-                          onPress={() => {
-                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                            setAddContactModalVisible(true);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.headerTopCircleText}>＋</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <Image 
-                        source={require('./assets/navi_thumbs_up.png')} 
-                        style={{ width: 40, height: 40, marginTop: 4, resizeMode: 'contain' }} 
-                      />
+                    <View style={styles.headerTopRightActions}>
+                      <TouchableOpacity 
+                        style={styles.headerTopCircleBtn}
+                        onPress={() => alert("Open camera to share a status update! 📷")}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.headerTopCircleText}>📷</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={styles.headerTopCircleBtn}
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          setAddContactModalVisible(true);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.headerTopCircleText}>＋</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                   
                   <View style={styles.headerBottomRow}>
                     <Text style={styles.headerTitle}>Chats</Text>
+                    <Image 
+                      source={require('./assets/navi_thumbs_up.png')} 
+                      style={{ width: 44, height: 44, resizeMode: 'contain', marginRight: 4 }} 
+                    />
                   </View>
                 </View>
 
