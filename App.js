@@ -3336,7 +3336,7 @@ export default function App() {
                         onPress={handleListenToSuggestions}
                       >
                         <Text style={styles.naviOptionText}>
-                          {pendingText || pendingImage ? "💬 See suggestions" : "💬 Reply politely"}
+                          {pendingText || pendingImage ? "💬 See suggestions (3)" : "💬 Reply politely (3)"}
                         </Text>
                       </TouchableOpacity>
                       
