@@ -3265,7 +3265,7 @@ export default function App() {
                     </>
                   ) : suggestionsVisible ? (
                     <>
-                      <Text style={styles.naviSpeechTitle}>💬 Choose a reply:</Text>
+                      <Text style={styles.naviSpeechTitle}>💬 Choose a reply (3):</Text>
                       {isGeneratingSuggestions ? (
                         <ActivityIndicator size="small" color="#1D4ED8" style={{ marginVertical: 8 }} />
                       ) : (
