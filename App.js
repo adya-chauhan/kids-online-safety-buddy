@@ -3270,18 +3270,24 @@ export default function App() {
                         <ActivityIndicator size="small" color="#1D4ED8" style={{ marginVertical: 8 }} />
                       ) : (
                         <>
-                          {politeSuggestions.map((suggestion, idx) => (
-                            <TouchableOpacity 
-                              key={idx}
-                              style={styles.naviOptionBtn}
-                              onPress={() => {
-                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                                handleSelectPoliteSuggestion(suggestion);
-                              }}
-                            >
-                              <Text style={styles.naviOptionText}>{suggestion}</Text>
-                            </TouchableOpacity>
-                          ))}
+                          <ScrollView 
+                            style={{ maxHeight: 130, width: '100%' }} 
+                            contentContainerStyle={{ paddingBottom: 2 }}
+                            showsVerticalScrollIndicator={true}
+                          >
+                            {politeSuggestions.map((suggestion, idx) => (
+                              <TouchableOpacity 
+                                key={idx}
+                                style={styles.naviOptionBtn}
+                                onPress={() => {
+                                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                  handleSelectPoliteSuggestion(suggestion);
+                                }}
+                              >
+                                <Text style={styles.naviOptionText}>{suggestion}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
                           <TouchableOpacity 
                             style={[styles.naviOptionBtn, { backgroundColor: '#F3F4F6', borderColor: '#D1D5DB', marginTop: 4 }]}
                             onPress={() => {
