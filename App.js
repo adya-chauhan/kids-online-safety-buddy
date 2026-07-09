@@ -3132,24 +3132,7 @@ export default function App() {
                 </View>
               </TouchableOpacity>
 
-              {/* Top Right Calling Oval */}
-              <View style={styles.chatHeaderCallingOval}>
-                <TouchableOpacity 
-                  style={styles.chatHeaderCallingBtn}
-                  onPress={() => startCall('video')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.chatHeaderCallingText}>📹</Text>
-                </TouchableOpacity>
-                <View style={styles.chatHeaderCallingDivider} />
-                <TouchableOpacity 
-                  style={styles.chatHeaderCallingBtn}
-                  onPress={() => startCall('voice')}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.chatHeaderCallingText}>📞</Text>
-                </TouchableOpacity>
-              </View>
+
             </View>
 
 
