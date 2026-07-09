@@ -3440,14 +3440,6 @@ export default function App() {
                     <View style={styles.headerTopRightActions}>
                       <TouchableOpacity 
                         style={styles.headerTopCircleBtn}
-                        onPress={() => alert("Open camera to share a status update! 📷")}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.headerTopCircleText}>📷</Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={styles.headerTopCircleBtn}
                         onPress={() => {
                           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                           setAddContactModalVisible(true);
