@@ -492,6 +492,16 @@ export default function App() {
 
   const [trustedAdult, setTrustedAdult] = useState(null);
   const [addAdultModalVisible, setAddAdultModalVisible] = useState(false);
+
+  const getAdultContacts = () => {
+    return profiles.filter(p => {
+      if (p.isTrustedAdult) return true;
+      if (trustedAdult && p.phone && p.phone.replace(/\D/g, '') === trustedAdult.phone.replace(/\D/g, '')) return true;
+      const role = (p.role || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      return role.includes('parent') || role.includes('adult') || role.includes('mom') || role.includes('dad') || role.includes('guardian') || role.includes('brother') || role.includes('sister') || name.includes('mom') || name.includes('dad');
+    });
+  };
   const [adultName, setAdultName] = useState('');
   const [adultPhone, setAdultPhone] = useState('');
   const [adultRelation, setAdultRelation] = useState('');
@@ -537,7 +547,8 @@ export default function App() {
       setIsSpeaker(false);
       setIsVideoOff(false);
 
-      const isSimulated = !activeCall.contactId || 
+      const profile = profiles.find(p => p.id === activeCall.contactId);
+      const isSimulated = !activeCall.contactId || (profile ? profile.is_simulated : false) ||
                           activeCall.contactId === '4' || 
                           activeCall.contactId === '5' || 
                           activeCall.contactId === 'trusted_adult';
@@ -703,6 +714,12 @@ export default function App() {
                 }
                 return; // Suppress from normal chat messages timeline
               }
+              // Handle System Interventions
+              if (textStr.startsWith('__SYSTEM_INTERVENTION__')) {
+                // Instantly refresh dashboard
+                fetchRealDashboardData();
+                return; // Suppress from normal chat messages timeline
+              }
 
               const now = new Date(newMsg.created_at);
               const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -720,7 +737,9 @@ export default function App() {
                 [senderId]: [...(prev[senderId] || []), mappedMsg]
               }));
 
-              if (activeChatRef.current && activeChatRef.current.id === senderId) {
+              const adultContacts = getAdultContacts();
+              const isAdultContact = adultContacts.some(a => a.id === senderId);
+              if (activeChatRef.current && activeChatRef.current.id === senderId && !isAdultContact) {
                 const safety = checkMessageSafety(newMsg.text, false);
                 if (safety) {
                   LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -766,12 +785,18 @@ export default function App() {
         if (saved) {
           const parsed = JSON.parse(saved);
           setTrustedAdult(parsed);
+          
+          const adultId = parsed.id || 'trusted_adult';
+          const cleanPhone = parsed.phone ? parsed.phone.replace(/\D/g, '') : '';
+          
           setProfiles(prev => {
-            if (!prev.some(p => p.id === 'trusted_adult')) {
+            const alreadyExists = prev.some(p => p.id === adultId || (p.phone && p.phone.replace(/\D/g, '') === cleanPhone));
+            
+            if (!alreadyExists) {
               return [
                 ...prev,
                 {
-                  id: 'trusted_adult',
+                  id: adultId,
                   name: parsed.name,
                   phone: parsed.phone,
                   role: `${parsed.relation} 🛡️ (Trusted Adult)`,
@@ -779,11 +804,21 @@ export default function App() {
                   avatar: null,
                   time: 'Just now',
                   unread: 0,
-                  is_simulated: true
+                  is_simulated: adultId === 'trusted_adult'
                 }
               ];
+            } else {
+              return prev.map(p => {
+                if (p.id === adultId || (p.phone && p.phone.replace(/\D/g, '') === cleanPhone)) {
+                  return {
+                    ...p,
+                    isTrustedAdult: true,
+                    role: p.role && p.role.includes('🛡️') ? p.role : `${p.role || ''} (${parsed.relation} 🛡️)`
+                  };
+                }
+                return p;
+              });
             }
-            return prev;
           });
         }
       } catch (e) {
@@ -829,7 +864,234 @@ export default function App() {
   const [selectedChatIds, setSelectedChatIds] = useState([]);
   const [activeTab, setActiveTab] = useState('chats'); // 'chats', 'safety', 'profile'
   const [activeCall, setActiveCall] = useState(null); // { contactName, type: 'video' | 'voice' }
-  
+
+  const saveInterventionLogToSupabase = async (action, type, originalText = "") => {
+    if (!supabase || !currentUser || !activeChat) return;
+    try {
+      const childId = currentUser.id;
+      const childName = currentUser.name;
+      const contactName = activeChat.name;
+
+      const logData = {
+        childId,
+        childName,
+        contactName,
+        action, // 'Bypassed', 'Listened', 'Alerted', 'Ignored'
+        type,
+        messageText: originalText,
+        timestamp: new Date().toISOString()
+      };
+
+      const logText = `__SYSTEM_INTERVENTION__:${JSON.stringify(logData)}`;
+      await sendSupabaseMessage(childId, activeChat.id, logText);
+      console.log(`[Dashboard Log] Saved intervention log:`, logData);
+    } catch (e) {
+      console.error('[Dashboard Log] Error saving intervention log:', e);
+    }
+  };
+
+  const fetchRealDashboardData = async () => {
+    if (!supabase) return;
+    try {
+      const dbProfiles = await fetchProfiles();
+      const childProfiles = dbProfiles.filter(p => {
+        const role = (p.role || '').toLowerCase();
+        return !role.includes('parent') && !role.includes('adult') && !role.includes('mom') && !role.includes('dad') && !role.includes('guardian');
+      });
+
+      if (childProfiles.length === 0) return;
+      const childIds = childProfiles.map(p => p.id);
+
+      // Fetch all messages to filter locally for any messages involving any child
+      const { data: allMessages, error } = await supabase
+        .from('messages')
+        .select('*');
+
+      if (error) {
+        console.error('[Dashboard] Error fetching messages:', error.message);
+        return;
+      }
+
+      if (!allMessages || allMessages.length === 0) {
+        setNaviPopupCount(0);
+        setToxicReceivedCount(0);
+        setNaviBypassCount(0);
+        setNaviListenCount(0);
+        setNaviAlertAdultCount(0);
+        setSafetyAlertsLog([]);
+        return;
+      }
+
+      // Filter messages involving any child
+      const childMessages = allMessages.filter(msg => {
+        return childIds.includes(msg.sender_id) || childIds.includes(msg.recipient_id);
+      });
+
+      if (childMessages.length === 0) {
+        setNaviPopupCount(0);
+        setToxicReceivedCount(0);
+        setNaviBypassCount(0);
+        setNaviListenCount(0);
+        setNaviAlertAdultCount(0);
+        setSafetyAlertsLog([]);
+        return;
+      }
+
+      let popupCount = 0;
+      let receivedFlaggedCount = 0;
+      let bypassCount = 0;
+      let listenCount = 0;
+      let alertAdultCount = 0;
+      const alertsLog = [];
+
+      const sortedMessages = [...childMessages].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+      for (const msg of sortedMessages) {
+        if (msg.text.startsWith('__CALL_')) continue;
+
+        if (msg.text.startsWith('__SYSTEM_INTERVENTION__')) {
+          try {
+            const logJSON = msg.text.substring('__SYSTEM_INTERVENTION__:'.length);
+            const logData = JSON.parse(logJSON);
+            
+            const date = new Date(logData.timestamp || msg.created_at);
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dayName = dayNames[date.getDay()];
+            const timeStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            if (logData.action === 'Bypassed') {
+              bypassCount++;
+              popupCount++;
+            } else if (logData.action === 'Listened') {
+              listenCount++;
+              popupCount++;
+            } else if (logData.action === 'Alerted') {
+              alertAdultCount++;
+              popupCount++;
+            } else if (logData.action === 'Ignored') {
+              receivedFlaggedCount++;
+            }
+
+            alertsLog.unshift({
+              id: msg.id,
+              time: timeStr,
+              dayName: dayName,
+              childName: logData.childName || 'Child',
+              type: logData.type || 'Safety Alert',
+              contact: logData.contactName || 'Unknown',
+              action: logData.action,
+              messageText: logData.messageText
+            });
+          } catch (parseErr) {
+            console.error('[Dashboard] Error parsing intervention log:', parseErr);
+          }
+          continue;
+        }
+
+        // Fallback for legacy messages
+        const isSentByChild = childIds.includes(msg.sender_id);
+        const { label } = globalClassifier.classify(msg.text);
+
+        const childUser = childProfiles.find(p => p.id === (isSentByChild ? msg.sender_id : msg.recipient_id));
+        const childName = childUser ? childUser.name : 'Child';
+
+        const contactId = isSentByChild ? msg.recipient_id : msg.sender_id;
+        const contactProfile = dbProfiles.find(p => p.id === contactId);
+        const contactName = contactProfile ? contactProfile.name : 'Unknown';
+
+        const date = new Date(msg.created_at);
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const dayName = dayNames[date.getDay()];
+        const msgTime = new Date(msg.created_at);
+        const timeStr = msgTime.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + msgTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        if (isSentByChild) {
+          if (label === 'mean' || label === 'private_info') {
+            popupCount++;
+            bypassCount++;
+            
+            alertsLog.unshift({
+              id: msg.id,
+              time: timeStr,
+              dayName: dayName,
+              childName: childName,
+              type: label === 'mean' ? 'Sent Message Intercepted (Bullying)' : 'Sent Message Intercepted (Private Info)',
+              contact: contactName,
+              action: 'Bypassed',
+              messageText: msg.text
+            });
+          } else if (
+            msg.text.toLowerCase().includes('kind') || 
+            msg.text.toLowerCase().includes('please stop') || 
+            msg.text.toLowerCase().includes('boundary') ||
+            msg.text.toLowerCase().includes('not nice') ||
+            msg.text.toLowerCase().includes('keep it friendly') ||
+            msg.text.toLowerCase().includes('respect')
+          ) {
+            popupCount++;
+            listenCount++;
+            
+            alertsLog.unshift({
+              id: msg.id,
+              time: timeStr,
+              dayName: dayName,
+              childName: childName,
+              type: 'Coaching Advice Accepted',
+              contact: contactName,
+              action: 'Listened',
+              messageText: msg.text
+            });
+          }
+        } else {
+          if (label === 'mean' || label === 'private_info') {
+            receivedFlaggedCount++;
+            
+            if (label === 'private_info' || msg.text.toLowerCase().includes('hate') || msg.text.toLowerCase().includes('stupid')) {
+              alertAdultCount++;
+              alertsLog.unshift({
+                id: msg.id,
+                time: timeStr,
+                dayName: dayName,
+                childName: childName,
+                type: 'Severe Received Message Flagged',
+                contact: contactName,
+                action: 'Alerted',
+                messageText: msg.text
+              });
+            } else {
+              alertsLog.unshift({
+                id: msg.id,
+                time: timeStr,
+                dayName: dayName,
+                childName: childName,
+                type: 'Received Message Flagged',
+                contact: contactName,
+                action: 'Monitored',
+                messageText: msg.text
+              });
+            }
+          }
+        }
+      }
+
+      setNaviPopupCount(popupCount);
+      setToxicReceivedCount(receivedFlaggedCount);
+      setNaviBypassCount(bypassCount);
+      setNaviListenCount(listenCount);
+      setNaviAlertAdultCount(alertAdultCount);
+      setSafetyAlertsLog(alertsLog);
+
+    } catch (err) {
+      console.error('[Dashboard] Error updating stats:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'dashboard' && isCurrentUserAdult()) {
+      fetchRealDashboardData();
+    }
+  }, [activeTab, currentUser]);
+
   const chatScrollRef = useRef(null);
 
   const handleToggleSelectMode = () => {
@@ -989,7 +1251,7 @@ export default function App() {
     );
   };
 
-  // Mock Parental Insights Dashboard Screen
+  // Parental Insights Dashboard Screen with Real Child Data
   const renderDashboardScreen = () => {
     const totalViolations = naviPopupCount + toxicReceivedCount;
     const safetyScore = totalViolations === 0 ? 100 : Math.max(20, Math.round(100 - (totalViolations * 10)));
@@ -1012,6 +1274,35 @@ export default function App() {
     // Receptiveness score calculation
     const totalInterventions = naviListenCount + naviBypassCount + naviAlertAdultCount;
     const listenRate = totalInterventions === 0 ? 100 : Math.round((naviListenCount / Math.max(1, naviListenCount + naviBypassCount)) * 100);
+
+    // Calculate weekly trend (last 7 days counts)
+    const dayCounts = { 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0 };
+    safetyAlertsLog.forEach(alert => {
+      if (alert.dayName && dayCounts[alert.dayName] !== undefined) {
+        dayCounts[alert.dayName]++;
+      }
+    });
+
+    // Count categories dynamically
+    let meanSpeechCount = 0;
+    let privacyCount = 0;
+    let severeCount = 0;
+
+    safetyAlertsLog.forEach(alert => {
+      if (alert.type.includes('Bullying') || alert.type.includes('Bully') || alert.type.includes('Mean')) {
+        meanSpeechCount++;
+      } else if (alert.type.includes('Private')) {
+        privacyCount++;
+      }
+      if (alert.action === 'Alerted' || alert.type.includes('Severe')) {
+        severeCount++;
+      }
+    });
+
+    const totalTypes = meanSpeechCount + privacyCount + severeCount;
+    const meanWidth = totalTypes === 0 ? 0 : Math.round((meanSpeechCount / totalTypes) * 100);
+    const privacyWidth = totalTypes === 0 ? 0 : Math.round((privacyCount / totalTypes) * 100);
+    const severeWidth = totalTypes === 0 ? 0 : Math.round((severeCount / totalTypes) * 100);
 
     return (
       <View style={styles.tabContentContainer}>
@@ -1037,9 +1328,9 @@ export default function App() {
               </View>
               <Text style={styles.safetyOverviewDesc}>
                 {safetyScore >= 80 
-                  ? 'Child has maintained a highly positive chat history. Cyberbullying exposure is minimal.'
+                  ? "Child's chat history is positive. Cyberbullying exposure is minimal."
                   : safetyScore >= 50 
-                    ? 'Some offensive messages detected. Consider reviewing logs and scheduling a safety discussion.'
+                    ? 'Some offensive messages detected. Consider reviewing logs and discussing online safety.'
                     : 'Frequent toxic interactions flagged. Immediate parental guidance is recommended.'}
               </Text>
             </View>
@@ -1098,10 +1389,10 @@ export default function App() {
             <View style={styles.categoryItem}>
               <View style={styles.statsRowBetween}>
                 <Text style={styles.categoryName}>Mean Speech/Bullying</Text>
-                <Text style={styles.categoryCount}>2</Text>
+                <Text style={styles.categoryCount}>{meanSpeechCount}</Text>
               </View>
               <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: '66%', backgroundColor: '#EF4444' }]} />
+                <View style={[styles.progressBarFill, { width: `${meanWidth}%`, backgroundColor: '#EF4444' }]} />
               </View>
             </View>
             
@@ -1109,10 +1400,10 @@ export default function App() {
             <View style={[styles.categoryItem, { marginTop: 12 }]}>
               <View style={styles.statsRowBetween}>
                 <Text style={styles.categoryName}>Private Info Sharing</Text>
-                <Text style={styles.categoryCount}>1</Text>
+                <Text style={styles.categoryCount}>{privacyCount}</Text>
               </View>
               <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: '33%', backgroundColor: '#F59E0B' }]} />
+                <View style={[styles.progressBarFill, { width: `${privacyWidth}%`, backgroundColor: '#F59E0B' }]} />
               </View>
             </View>
 
@@ -1120,10 +1411,10 @@ export default function App() {
             <View style={[styles.categoryItem, { marginTop: 12 }]}>
               <View style={styles.statsRowBetween}>
                 <Text style={styles.categoryName}>Severe Safety Alerts</Text>
-                <Text style={styles.categoryCount}>0</Text>
+                <Text style={styles.categoryCount}>{severeCount}</Text>
               </View>
               <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: '0%', backgroundColor: '#3B82F6' }]} />
+                <View style={[styles.progressBarFill, { width: `${severeWidth}%`, backgroundColor: '#3B82F6' }]} />
               </View>
             </View>
           </View>
@@ -1132,31 +1423,75 @@ export default function App() {
           <Text style={styles.updatesSectionLabel}>Weekly Alert History</Text>
           <View style={styles.chartCard}>
             <View style={styles.chartBarsContainer}>
-              <View style={styles.chartBarItem}>
-                <View style={[styles.chartBarFill, { height: 20, backgroundColor: '#64748B' }]} />
-                <Text style={styles.chartBarDay}>M</Text>
-              </View>
-              <View style={styles.chartBarItem}>
-                <View style={[styles.chartBarFill, { height: 40, backgroundColor: '#64748B' }]} />
-                <Text style={styles.chartBarDay}>T</Text>
-              </View>
-              <View style={styles.chartBarItem}>
-                <View style={[styles.chartBarFill, { height: 10, backgroundColor: '#64748B' }]} />
-                <Text style={styles.chartBarDay}>W</Text>
-              </View>
-              <View style={styles.chartBarItem}>
-                <View style={[styles.chartBarFill, { height: 60, backgroundColor: '#EF4444' }]} />
-                <Text style={styles.chartBarDay}>T</Text>
-              </View>
-              <View style={styles.chartBarItem}>
-                <View style={[styles.chartBarFill, { height: 30, backgroundColor: '#64748B' }]} />
-                <Text style={styles.chartBarDay}>F</Text>
-              </View>
+              {Object.keys(dayCounts).map(day => {
+                const count = dayCounts[day];
+                const height = Math.max(8, Math.min(80, count * 20));
+                const barColor = count > 0 ? '#EF4444' : '#94A3B8';
+                return (
+                  <View key={day} style={styles.chartBarItem}>
+                    <Text style={{ fontSize: 10, fontWeight: '750', color: count > 0 ? '#EF4444' : '#64748B', marginBottom: 2 }}>{count}</Text>
+                    <View style={[styles.chartBarFill, { height: height, backgroundColor: barColor }]} />
+                    <Text style={styles.chartBarDay}>{day}</Text>
+                  </View>
+                );
+              })}
             </View>
             <Text style={styles.statsSubDesc}>
               Daily interventions count showing safety warnings triggered throughout the week.
             </Text>
           </View>
+
+          {/* Safety Alerts Log List */}
+          <Text style={styles.updatesSectionLabel}>Safety Alerts Log</Text>
+          {safetyAlertsLog.length > 0 ? (
+            safetyAlertsLog.map(alert => {
+              let badgeStyle = styles.alertBadgeListen;
+              let badgeTextStyle = styles.alertBadgeTextListen;
+              let emoji = "💡";
+
+              if (alert.action === 'Bypassed') {
+                badgeStyle = styles.alertBadgeBypass;
+                badgeTextStyle = styles.alertBadgeTextBypass;
+                emoji = "⚠️";
+              } else if (alert.action === 'Alerted') {
+                badgeStyle = styles.alertBadgeAdult;
+                badgeTextStyle = styles.alertBadgeTextAdult;
+                emoji = "🚨";
+              } else if (alert.action === 'Monitored') {
+                badgeStyle = styles.alertBadgeAdult;
+                badgeTextStyle = styles.alertBadgeTextAdult;
+                emoji = "👀";
+              }
+
+              return (
+                <View key={alert.id} style={styles.alertLogCard}>
+                  <View style={styles.alertLogHeader}>
+                    <View style={styles.alertLogHeaderLeft}>
+                      <Text style={styles.alertLogEmoji}>{emoji}</Text>
+                      <View>
+                        <Text style={styles.alertLogTitle}>{alert.type}</Text>
+                        <Text style={styles.alertLogTime}>{alert.time}</Text>
+                      </View>
+                    </View>
+                    <View style={[styles.alertBadge, badgeStyle]}>
+                      <Text style={[styles.alertBadgeText, badgeTextStyle]}>
+                        {alert.action.toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.alertLogBody}>
+                    <Text style={styles.alertContactText}>
+                      <Text style={{ fontWeight: '700' }}>Child:</Text> {alert.childName} | <Text style={{ fontWeight: '750' }}>Participant:</Text> {alert.contact}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20 }}>
+              <Text style={styles.emptyLogText}>No safety alerts logged yet.</Text>
+            </View>
+          )}
         </ScrollView>
       </View>
     );
@@ -1323,7 +1658,7 @@ export default function App() {
                     fontWeight: '800',
                     color: isCurrentUserAdult() ? '#065F46' : '#1E40AF',
                   }}>
-                    {isCurrentUserAdult() ? '🧑‍💼 Adult' : '🧒 Kid'} ({currentUser?.role || 'Kid 👧'})
+                    {isCurrentUserAdult() ? '🧑‍💼 Adult' : '🧒 Kid'}
                   </Text>
                 </View>
               </View>
@@ -1517,6 +1852,10 @@ export default function App() {
 
   const handleSelectPoliteSuggestion = (suggestionText) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    
+    // Log the intervention event to Supabase
+    saveInterventionLogToSupabase('Listened', pendingImage ? 'Sent Image Intercepted' : 'Sent Message Intercepted', pendingText || '[Image]');
+
     sendSafeFeedback(suggestionText);
     setPendingImage(null);
     setPendingText(null);
@@ -1785,6 +2124,12 @@ export default function App() {
     setNaviBypassCount(prev => prev + 1);
     setSafetyAlertsLog(prev => prev.map((a, idx) => idx === 0 && a.action === 'Pending Reconsideration' ? { ...a, action: 'Bypassed' } : a));
 
+    if (pendingImage || pendingText) {
+      saveInterventionLogToSupabase('Bypassed', pendingImage ? 'Sent Image Intercepted' : 'Sent Message Intercepted', pendingText || '[Image]');
+    } else {
+      saveInterventionLogToSupabase('Ignored', 'Received Message Flagged', interceptedText || '');
+    }
+
     if (pendingImage) {
       sendFinalImageMessage(pendingImage.uri, pendingImage.text, true);
       setPendingImage(null);
@@ -1865,6 +2210,10 @@ export default function App() {
     setProfiles(prev => prev.map(p => 
       p.id === adultId ? { ...p, time: timeStr, lastUpdated: Date.now() } : p
     ));
+
+    if (supabase && currentUser && adultId !== 'trusted_adult' && adultId !== '4' && adultId !== '5') {
+      sendSupabaseMessage(currentUser.id, adultId, reportText);
+    }
   };
 
   const handleNaviTellAdult = () => {
@@ -1880,12 +2229,15 @@ export default function App() {
     let reportText = "";
     if (pendingImage) {
       reportText = `🚨 [Navi Safety Report]\nI was about to send an unsafe image.\nCan you help intervene? 🛡️`;
+      saveInterventionLogToSupabase('Alerted', 'Sent Image Intercepted', '[Image]');
     } else if (pendingText) {
       const type = safetyCategory === 'IGNORE_PIVOT' ? 'private information' : 'unsafe content';
       reportText = `🚨 [Navi Safety Report]\nI was about to send a message containing ${type}: "${pendingText}".\nCan you help intervene? 🛡️`;
+      saveInterventionLogToSupabase('Alerted', 'Sent Message Intercepted', pendingText);
     } else {
       const type = safetyCategory === 'IGNORE_PIVOT' ? 'request for private information' : 'mean or unsafe content';
       reportText = `🚨 [Navi Safety Report]\n${activeChat.name} sent me a message containing ${type}: "${lastMsgText}".\nCan you help intervene? 🛡️`;
+      saveInterventionLogToSupabase('Alerted', 'Received Message Flagged', lastMsgText);
     }
 
     setPendingImage(null);
@@ -1916,26 +2268,34 @@ export default function App() {
         time: timeStr
       }];
 
-      // Send to Custom Trusted Adult
-      if (trustedAdult) {
-        const adultMsgId = `adult_report_${Date.now()}`;
-        updated['trusted_adult'] = [...(updated['trusted_adult'] || []), {
-          id: adultMsgId,
+      // Send to all actual adult contacts
+      const adultContacts = getAdultContacts();
+      adultContacts.forEach(adult => {
+        const msgId = `auto_report_${adult.id}_${Date.now()}`;
+        updated[adult.id] = [...(updated[adult.id] || []), {
+          id: msgId,
           text: reportText,
           sender: 'user',
           time: timeStr
         }];
-      }
+
+        if (supabase && currentUser && !adult.is_simulated) {
+          sendSupabaseMessage(currentUser.id, adult.id, reportText);
+        }
+      });
       
       return updated;
     });
 
     // Bring profiles to top
-    setProfiles(prev => prev.map(p => 
-      (p.id === '4' || p.id === '5' || p.id === 'trusted_adult')
-        ? { ...p, time: timeStr, lastUpdated: Date.now() } 
-        : p
-    ));
+    const adultContacts = getAdultContacts();
+    setProfiles(prev => prev.map(p => {
+      const isAdult = adultContacts.some(a => a.id === p.id);
+      if (isAdult) {
+        return { ...p, time: timeStr, lastUpdated: Date.now() };
+      }
+      return p;
+    }));
 
     // Trigger thumbs up mood and success message
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -1965,10 +2325,12 @@ export default function App() {
         setNaviMascotImageState('serious');
         
         // Open the designated chat screen
-        const targetId = trustedAdult ? 'trusted_adult' : '4';
-        const targetProfile = profiles.find(p => p.id === targetId);
-        if (targetProfile) {
-          openChat(targetProfile);
+        const adultContacts = getAdultContacts();
+        if (adultContacts.length > 0) {
+          const targetProfile = profiles.find(p => p.id === adultContacts[0].id);
+          if (targetProfile) {
+            openChat(targetProfile);
+          }
         }
       });
     }, 2500);
@@ -1994,8 +2356,9 @@ export default function App() {
 
   const messageTrustedAdultAction = () => {
     setAdultAlertVisible(false);
-    sendReportToAdult('trusted_adult');
-    const adultProfile = profiles.find(p => p.id === 'trusted_adult');
+    const adultId = trustedAdult ? (trustedAdult.id || 'trusted_adult') : 'trusted_adult';
+    sendReportToAdult(adultId);
+    const adultProfile = profiles.find(p => p.id === adultId);
     if (adultProfile) {
       openChat(adultProfile);
     }
@@ -2058,28 +2421,79 @@ export default function App() {
       Alert.alert("Error", "Please fill in all the details.");
       return;
     }
-    const newAdult = { name: name.trim(), phone: phone.trim(), relation: relation.trim() };
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    let matchedProfile = profiles.find(p => p.phone && p.phone.replace(/\D/g, '') === cleanPhone);
+
+    if (!matchedProfile && supabase) {
+      try {
+        const dbProfile = await fetchProfileByPhone(cleanPhone);
+        if (dbProfile) {
+          matchedProfile = {
+            id: dbProfile.id,
+            name: dbProfile.name,
+            phone: dbProfile.phone,
+            role: dbProfile.role || 'Contact',
+            bio: dbProfile.bio || '',
+            avatar: null,
+            time: 'Just now',
+            unread: 0,
+            is_simulated: false
+          };
+          setProfiles(prev => [...prev, matchedProfile]);
+        }
+      } catch (dbErr) {
+        console.error('[Trusted Adult] Error checking database for phone:', dbErr);
+      }
+    }
+
+    const adultId = matchedProfile ? matchedProfile.id : 'trusted_adult';
+
+    const newAdult = { 
+      name: name.trim(), 
+      phone: phone.trim(), 
+      relation: relation.trim(),
+      id: adultId
+    };
+
     setTrustedAdult(newAdult);
     await AsyncStorage.setItem('navi_trusted_adult', JSON.stringify(newAdult));
     
-    // Add/Update in profiles state
     setProfiles(prev => {
-      const filtered = prev.filter(p => p.id !== 'trusted_adult');
-      return [
-        ...filtered,
-        {
-          id: 'trusted_adult',
-          name: newAdult.name,
-          phone: newAdult.phone,
-          role: `${newAdult.relation} 🛡️ (Trusted Adult)`,
-          bio: `My designated trusted adult for safety alerts.`,
-          avatar: null,
-          time: 'Just now',
-          unread: 0,
-          is_simulated: true
-        }
-      ];
+      const cleanPhone = newAdult.phone.replace(/\D/g, '');
+      const exists = prev.some(p => p.id === adultId || (p.phone && p.phone.replace(/\D/g, '') === cleanPhone));
+
+      if (exists) {
+        return prev.map(p => {
+          if (p.id === adultId || (p.phone && p.phone.replace(/\D/g, '') === cleanPhone)) {
+            return {
+              ...p,
+              name: newAdult.name,
+              phone: newAdult.phone,
+              isTrustedAdult: true,
+              role: p.role && p.role.includes('🛡️') ? p.role : `${p.role || ''} (${newAdult.relation} 🛡️)`
+            };
+          }
+          return p;
+        });
+      } else {
+        return [
+          ...prev,
+          {
+            id: adultId,
+            name: newAdult.name,
+            phone: newAdult.phone,
+            role: `${newAdult.relation} 🛡️ (Trusted Adult)`,
+            bio: `My designated trusted adult for safety alerts.`,
+            avatar: null,
+            time: 'Just now',
+            unread: 0,
+            is_simulated: adultId === 'trusted_adult'
+          }
+        ];
+      }
     });
+
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setAddAdultModalVisible(false);
     Alert.alert("Success", `${newAdult.name} has been added as your trusted adult!`);
@@ -2395,7 +2809,9 @@ export default function App() {
           ));
 
           // Scan contact's received message for safety if it's NOT Mommy or Daddy (trusted parents)
-          if (contactId !== '4' && contactId !== '5') {
+          const adultContacts = getAdultContacts();
+          const isAdultContact = adultContacts.some(a => a.id === contactId);
+          if (contactId !== '4' && contactId !== '5' && !isAdultContact) {
             const replySafety = checkMessageSafety(replyText, false);
             if (replySafety) {
               setSafetyCategory(replySafety);
@@ -2503,7 +2919,9 @@ export default function App() {
     ));
 
     // Scan contact's received message for safety if it's NOT Mommy or Daddy (trusted parents)
-    if (contactId !== '4' && contactId !== '5') {
+    const adultContacts = getAdultContacts();
+    const isAdultContact = adultContacts.some(a => a.id === contactId);
+    if (contactId !== '4' && contactId !== '5' && !isAdultContact) {
       const replySafety = checkMessageSafety(replyText, false);
       if (replySafety) {
         setSafetyCategory(replySafety);
@@ -2554,13 +2972,17 @@ export default function App() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={{ flex: 1 }}>
+              <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
               
               <View style={{ alignItems: 'center', marginBottom: 32 }}>
                 <Image 
-                  source={require('./assets/navi_serious.png')} 
+                  source={require('./assets/navi_thumbs_up.png')} 
                   style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 16 }} 
                 />
                 <Text style={{ fontSize: 28, fontWeight: '900', color: '#1E3A8A', textAlign: 'center' }}>Welcome to Navi! 🛡️</Text>
@@ -2669,6 +3091,7 @@ export default function App() {
             </ScrollView>
           </View>
         </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -2729,30 +3152,7 @@ export default function App() {
               </View>
             </View>
 
-            {/* Simulation Controls Bar */}
-            <View style={styles.simControlsBar}>
-              <TouchableOpacity 
-                style={[styles.simBtn, styles.simBtnGood]} 
-                onPress={() => triggerSimulationMessage('good')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.simBtnText}>😇 Good msg</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.simBtn, styles.simBtnBad]} 
-                onPress={() => triggerSimulationMessage('bad')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.simBtnText}>😈 Bad msg</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.simBtn, styles.simBtnInfo]} 
-                onPress={() => triggerSimulationMessage('info')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.simBtnText}>🔒 Ask Info</Text>
-              </TouchableOpacity>
-            </View>
+
 
             {/* Chat Messages */}
             <ScrollView 
@@ -2767,7 +3167,9 @@ export default function App() {
                 </View>
               </View>
 
-              {messages[activeChat.id]?.map((msg) => (
+               {messages[activeChat.id]
+                ?.filter((msg) => !msg.text || (!msg.text.startsWith('__SYSTEM_INTERVENTION__') && !msg.text.startsWith('__CALL_')))
+                ?.map((msg) => (
                 <View 
                   key={msg.id} 
                   style={[
@@ -3479,35 +3881,37 @@ export default function App() {
                 If someone says something online that makes you feel uncomfortable, worried, or sad, you should always tell an adult you trust (like Mom, Dad, a grandparent, or a teacher).
               </Text>
               <Text style={styles.adultAlertSub}>
-                {trustedAdult 
-                  ? `Would you like to send a quick message to your trusted adult, ${trustedAdult.name} (${trustedAdult.relation}), right now to check in?`
-                  : `Would you like to send a quick message to Mommy or Daddy right now to check in?`
-                }
+                Would you like to send a quick safety report message to your trusted adult contact right now to check in?
               </Text>
               
               <View style={styles.adultAlertActions}>
-                {trustedAdult && (
+                {getAdultContacts().map(adult => (
                   <TouchableOpacity 
+                    key={adult.id}
                     style={[styles.adultAlertBtnPrimary, { backgroundColor: '#2563EB', marginBottom: 8 }]} 
-                    onPress={messageTrustedAdultAction}
+                    onPress={() => {
+                      setAdultAlertVisible(false);
+                      sendReportToAdult(adult.id);
+                      openChat(adult);
+                    }}
                   >
-                    <Text style={styles.adultAlertBtnPrimaryText}>Message {trustedAdult.name} ({trustedAdult.relation}) 🛡️</Text>
+                    <Text style={styles.adultAlertBtnPrimaryText}>
+                      Message {adult.name} ({adult.role || 'Adult'}) 🛡️
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                
+                {getAdultContacts().length === 0 && (
+                  <TouchableOpacity 
+                    style={[styles.adultAlertBtnPrimary, { backgroundColor: '#10B981', marginBottom: 8 }]} 
+                    onPress={() => {
+                      setAdultAlertVisible(false);
+                      setAddAdultModalVisible(true);
+                    }}
+                  >
+                    <Text style={styles.adultAlertBtnPrimaryText}>+ Add Trusted Adult Contact</Text>
                   </TouchableOpacity>
                 )}
-                
-                <TouchableOpacity 
-                  style={styles.adultAlertBtnPrimary} 
-                  onPress={messageMommyAction}
-                >
-                  <Text style={styles.adultAlertBtnPrimaryText}>Message Mommy 👩</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.adultAlertBtnPrimary, { backgroundColor: '#059669', marginVertical: 8 }]} 
-                  onPress={messageDaddyAction}
-                >
-                  <Text style={styles.adultAlertBtnPrimaryText}>Message Daddy 👨</Text>
-                </TouchableOpacity>
                 
                 <TouchableOpacity 
                   style={styles.adultAlertBtnSecondary} 
@@ -3541,64 +3945,65 @@ export default function App() {
             }}>
               <View style={styles.modalOverlay}>
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                  <View style={[styles.modalContainer, { padding: 24 }]}>
+                  <View style={[styles.modalContainer, { padding: 24, paddingBottom: 8 }]}>
                     <View style={styles.dragHandleArea}>
                       <View style={styles.modalDragHandle} />
                     </View>
+                    <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+                      <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 6, color: '#1E3A8A', textAlign: 'center' }}>
+                        🛡️ Add a Trusted Adult
+                      </Text>
+                      <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 20, textAlign: 'center', paddingHorizontal: 10 }}>
+                        This is the adult you can contact immediately if someone makes you feel uncomfortable or unsafe online.
+                      </Text>
 
-                    <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 6, color: '#1E3A8A', textAlign: 'center' }}>
-                      🛡️ Add a Trusted Adult
-                    </Text>
-                    <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 20, textAlign: 'center', paddingHorizontal: 10 }}>
-                      This is the adult you can contact immediately if someone makes you feel uncomfortable or unsafe online.
-                    </Text>
+                      <Text style={styles.inputLabel}>Adult's Name</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="e.g. Aunt Sarah, Coach Dave"
+                        placeholderTextColor="#94A3B8"
+                        value={adultName}
+                        onChangeText={setAdultName}
+                      />
 
-                    <Text style={styles.inputLabel}>Adult's Name</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g. Aunt Sarah, Coach Dave"
-                      placeholderTextColor="#94A3B8"
-                      value={adultName}
-                      onChangeText={setAdultName}
-                    />
+                      <Text style={styles.inputLabel}>Phone Number</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="e.g. 555-0199"
+                        placeholderTextColor="#94A3B8"
+                        keyboardType="phone-pad"
+                        value={adultPhone}
+                        onChangeText={setAdultPhone}
+                      />
 
-                    <Text style={styles.inputLabel}>Phone Number</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g. 555-0199"
-                      placeholderTextColor="#94A3B8"
-                      keyboardType="phone-pad"
-                      value={adultPhone}
-                      onChangeText={setAdultPhone}
-                    />
+                      <Text style={styles.inputLabel}>Relationship</Text>
+                      <TextInput
+                        style={styles.formInput}
+                        placeholder="e.g. Aunt, Teacher, Grandma"
+                        placeholderTextColor="#94A3B8"
+                        value={adultRelation}
+                        onChangeText={setAdultRelation}
+                      />
 
-                    <Text style={styles.inputLabel}>Relationship</Text>
-                    <TextInput
-                      style={styles.formInput}
-                      placeholder="e.g. Aunt, Teacher, Grandma"
-                      placeholderTextColor="#94A3B8"
-                      value={adultRelation}
-                      onChangeText={setAdultRelation}
-                    />
+                      <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+                        <TouchableOpacity 
+                          style={[styles.modalBtn, { flex: 1, backgroundColor: '#F1F5F9', height: 48, justifyContent: 'center', alignItems: 'center', borderRadius: 12 }]}
+                          onPress={() => {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setAddAdultModalVisible(false);
+                          }}
+                        >
+                          <Text style={[styles.modalBtnText, { color: '#64748B' }]}>Cancel</Text>
+                        </TouchableOpacity>
 
-                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-                      <TouchableOpacity 
-                        style={[styles.modalBtn, { flex: 1, backgroundColor: '#F1F5F9' }]}
-                        onPress={() => {
-                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                          setAddAdultModalVisible(false);
-                        }}
-                      >
-                        <Text style={[styles.modalBtnText, { color: '#64748B' }]}>Cancel</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity 
-                        style={[styles.modalBtn, { flex: 1, backgroundColor: '#2563EB' }]}
-                        onPress={() => handleSaveTrustedAdult(adultName, adultPhone, adultRelation)}
-                      >
-                        <Text style={[styles.modalBtnText, { color: '#FFFFFF' }]}>Save</Text>
-                      </TouchableOpacity>
-                    </View>
+                        <TouchableOpacity 
+                          style={[styles.modalBtn, { flex: 1, backgroundColor: '#2563EB', height: 48, justifyContent: 'center', alignItems: 'center', borderRadius: 12 }]}
+                          onPress={() => handleSaveTrustedAdult(adultName, adultPhone, adultRelation)}
+                        >
+                          <Text style={[styles.modalBtnText, { color: '#FFFFFF' }]}>Save</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </ScrollView>
                   </View>
                 </TouchableWithoutFeedback>
               </View>
@@ -3627,68 +4032,69 @@ export default function App() {
             }}>
               <View style={styles.modalOverlay}>
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                  <View style={[styles.modalContainer, { padding: 24 }]}>
+                  <View style={[styles.modalContainer, { padding: 24, paddingBottom: 8 }]}>
                     {/* Drag Handle to make it consistent with bottom sheet style */}
                     <View style={styles.dragHandleArea}>
                       <View style={styles.modalDragHandle} />
                     </View>
-
-                    <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 20, color: '#1E3A8A', textAlign: 'center' }}>
-                      ➕ Add Contact by Phone Number
-                    </Text>
-                    
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Search by Phone Number *</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                      <TextInput
-                        style={[styles.chatInput, { flex: 1, height: 44, marginRight: 0 }]}
-                        placeholder="Enter phone number (e.g. 555-0199)"
-                        placeholderTextColor="#6F6D83"
-                        keyboardType="phone-pad"
-                        value={searchPhoneQuery}
-                        onChangeText={setSearchPhoneQuery}
-                      />
-                      <TouchableOpacity 
-                        style={[styles.sendButton, { width: 80, height: 44, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
-                        onPress={handleSearchContactByPhone}
-                      >
-                        {isSearchingContact ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                          <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Search</Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-
-                    {foundContactProfile && (
-                      <View style={{ backgroundColor: '#EFF6FF', padding: 16, borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, borderColor: '#3B82F6', marginBottom: 20 }}>
-                        <Text style={{ fontSize: 15, fontWeight: '800', color: '#1E3A8A', marginBottom: 8 }}>Found User! ✅</Text>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>Name: {foundContactProfile.name}</Text>
-                        <Text style={{ fontSize: 13, color: '#475569' }}>Role: {foundContactProfile.role}</Text>
-                        <Text style={{ fontSize: 12, color: '#64748B', fontStyle: 'italic', marginTop: 4 }}>"{foundContactProfile.bio}"</Text>
+                    <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+                      <Text style={{ fontSize: 20, fontWeight: '800', marginBottom: 20, color: '#1E3A8A', textAlign: 'center' }}>
+                        ➕ Add Contact by Phone Number
+                      </Text>
+                      
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Search by Phone Number *</Text>
+                      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                        <TextInput
+                          style={[styles.chatInput, { flex: 1, height: 44, marginRight: 0 }]}
+                          placeholder="Enter phone number (e.g. 555-0199)"
+                          placeholderTextColor="#6F6D83"
+                          keyboardType="phone-pad"
+                          value={searchPhoneQuery}
+                          onChangeText={setSearchPhoneQuery}
+                        />
+                        <TouchableOpacity 
+                          style={[styles.sendButton, { width: 80, height: 44, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
+                          onPress={handleSearchContactByPhone}
+                        >
+                          {isSearchingContact ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Search</Text>
+                          )}
+                        </TouchableOpacity>
                       </View>
-                    )}
 
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
-                      <TouchableOpacity 
-                        style={[styles.actionBtnSecondary, { flex: 1, height: 48 }]} 
-                        onPress={() => {
-                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                          setSearchPhoneQuery('');
-                          setFoundContactProfile(null);
-                          setAddContactModalVisible(false);
-                        }}
-                      >
-                        <Text style={styles.actionBtnSecondaryText}>Cancel</Text>
-                      </TouchableOpacity>
+                      {foundContactProfile && (
+                        <View style={{ backgroundColor: '#EFF6FF', padding: 16, borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, borderColor: '#3B82F6', marginBottom: 20 }}>
+                          <Text style={{ fontSize: 15, fontWeight: '800', color: '#1E3A8A', marginBottom: 8 }}>Found User! ✅</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: '#1E293B' }}>Name: {foundContactProfile.name}</Text>
+                          <Text style={{ fontSize: 13, color: '#475569' }}>Role: {foundContactProfile.role}</Text>
+                          <Text style={{ fontSize: 12, color: '#64748B', fontStyle: 'italic', marginTop: 4 }}>"{foundContactProfile.bio}"</Text>
+                        </View>
+                      )}
 
-                      <TouchableOpacity 
-                        style={[styles.sendButton, { flex: 1, height: 48, backgroundColor: foundContactProfile ? '#10B981' : '#94A3B8' }]} 
-                        onPress={handleConfirmAddFoundContact}
-                        disabled={!foundContactProfile}
-                      >
-                        <Text style={styles.sendButtonText}>Add to Chats</Text>
-                      </TouchableOpacity>
-                    </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
+                        <TouchableOpacity 
+                          style={[styles.actionBtnSecondary, { flex: 1, height: 48 }]} 
+                          onPress={() => {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setSearchPhoneQuery('');
+                            setFoundContactProfile(null);
+                            setAddContactModalVisible(false);
+                          }}
+                        >
+                          <Text style={styles.actionBtnSecondaryText}>Cancel</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                          style={[styles.sendButton, { flex: 1, height: 48, backgroundColor: foundContactProfile ? '#10B981' : '#94A3B8' }]} 
+                          onPress={handleConfirmAddFoundContact}
+                          disabled={!foundContactProfile}
+                        >
+                          <Text style={styles.sendButtonText}>Add to Chats</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </ScrollView>
                   </View>
                 </TouchableWithoutFeedback>
               </View>
