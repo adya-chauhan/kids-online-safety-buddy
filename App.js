@@ -3119,9 +3119,12 @@ export default function App() {
     );
   }
 
+  const isAdultBg = isCurrentUserAdult();
+  const bgThemeColor = isAdultBg ? '#EAF7EE' : '#E6F0FA';
+
   return (
-    <View style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#E6F0FA" />
+    <View style={[styles.safeArea, { backgroundColor: bgThemeColor }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={bgThemeColor} />
       
       <KeyboardAvoidingView 
         style={styles.keyboardAvoid} 
@@ -3129,7 +3132,7 @@ export default function App() {
       >
         {activeChat ? (
           /* Chat Window Screen */
-          <View style={styles.container}>
+          <View style={[styles.container, { backgroundColor: bgThemeColor }]}>
             {/* Chat Header */}
             <View style={styles.chatHeader}>
               <TouchableOpacity 
@@ -3428,7 +3431,7 @@ export default function App() {
           </View>
         ) : (
           /* Main Tab Screen */
-          <View style={styles.container}>
+          <View style={[styles.container, { backgroundColor: bgThemeColor }]}>
             {activeTab === 'chats' && (
               <>
                 {/* Header */}
