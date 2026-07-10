@@ -1164,14 +1164,16 @@ export default function App() {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity 
-          style={[styles.tabItem, activeTab === 'resources' && styles.tabItemActive]}
-          onPress={() => setActiveTab('resources')}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'resources' && styles.tabIconActive]}>📚</Text>
-          <Text style={[styles.tabLabel, activeTab === 'resources' && styles.tabLabelActive]} numberOfLines={1}>Resources</Text>
-        </TouchableOpacity>
+        {!isAdult && (
+          <TouchableOpacity 
+            style={[styles.tabItem, activeTab === 'resources' && styles.tabItemActive]}
+            onPress={() => setActiveTab('resources')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabIcon, activeTab === 'resources' && styles.tabIconActive]}>📚</Text>
+            <Text style={[styles.tabLabel, activeTab === 'resources' && styles.tabLabelActive]} numberOfLines={1}>Resources</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity 
           style={[styles.tabItem, activeTab === 'profile' && styles.tabItemActive]}
