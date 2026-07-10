@@ -3475,7 +3475,7 @@ export default function App() {
                   <View style={styles.searchContainer}>
                     <TextInput
                       style={styles.searchInput}
-                      placeholder="🔍 Ask Navi something"
+                      placeholder="🔍 Find people"
                       placeholderTextColor="#6F6D83"
                       value={searchQuery}
                       onChangeText={setSearchQuery}
