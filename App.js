@@ -508,6 +508,11 @@ export default function App() {
   const [adultRelation, setAdultRelation] = useState('');
 
   const [naviRating, setNaviRating] = useState(null);
+  
+  // Kids Support Center Page states
+  const [selectedTextingType, setSelectedTextingType] = useState(null);
+  const [situationText, setSituationText] = useState('');
+  const [selectedSupportType, setSelectedSupportType] = useState(null);
 
   // Interception states for safety reviews
   const [pendingImage, setPendingImage] = useState(null); // { uri, text }
@@ -1531,7 +1536,44 @@ export default function App() {
     );
   };
 
+  const handleSupportSubmit = () => {
+    if (!selectedTextingType) {
+      Alert.alert("Tip", "Please select a Texting Type first!");
+      return;
+    }
+    if (!situationText.trim()) {
+      Alert.alert("Tip", "Please write a brief description of your situation!");
+      return;
+    }
+    if (!selectedSupportType) {
+      Alert.alert("Tip", "Please choose who you want to talk to (Navi or Therapist)!");
+      return;
+    }
+
+    Alert.alert(
+      "Support Requested",
+      `Thank you! Your request to talk to ${selectedSupportType} has been recorded. Navi is here to help! 🌟`,
+      [
+        {
+          text: "Great!",
+          onPress: () => {
+            setSelectedTextingType(null);
+            setSituationText('');
+            setSelectedSupportType(null);
+          }
+        }
+      ]
+    );
+  };
+
   const renderKidsPage = () => {
+    const textingTypes = [
+      { id: 1, label: "Friend 💬" },
+      { id: 2, label: "Family 🏠" },
+      { id: 3, label: "Group 👥" },
+      { id: 4, label: "Other 🌐" }
+    ];
+
     return (
       <View style={styles.tabContentContainer}>
         {/* Header */}
@@ -1541,15 +1583,91 @@ export default function App() {
           </View>
         </View>
 
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>🎈</Text>
-          <Text style={{ fontSize: 24, fontWeight: '800', color: '#1E293B', marginBottom: 8, textAlign: 'center' }}>
-            Empty Page
-          </Text>
-          <Text style={{ fontSize: 15, color: '#64748B', textAlign: 'center', lineHeight: 22 }}>
-            This page is created specifically for child users. Stay tuned for exciting new features coming soon! 🌟
-          </Text>
-        </View>
+        <ScrollView 
+          style={{ flex: 1 }} 
+          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Section 1: Texting Type */}
+          <Text style={styles.supportLabel}>Texting Type</Text>
+          <View style={styles.textingTypeRow}>
+            {textingTypes.map(t => {
+              const isSelected = selectedTextingType === t.id;
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[styles.textingTypeBox, isSelected && styles.textingTypeBoxSelected]}
+                  onPress={() => setSelectedTextingType(t.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.textingTypeBoxText, isSelected && styles.textingTypeBoxTextSelected]}>
+                    {t.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Section 2: Texting Situation */}
+          <Text style={styles.supportLabel}>Texting Situation</Text>
+          <TextInput
+            style={styles.situationInput}
+            placeholder="Tell us what's happening or what was said..."
+            placeholderTextColor="#94A3B8"
+            multiline={true}
+            numberOfLines={4}
+            value={situationText}
+            onChangeText={setSituationText}
+          />
+
+          {/* Section 3: Helper Choice */}
+          <View style={styles.helperChoiceRow}>
+            <TouchableOpacity
+              style={[
+                styles.helperChoiceBox,
+                selectedSupportType === 'Navi' && styles.helperChoiceBoxSelected
+              ]}
+              onPress={() => setSelectedSupportType('Navi')}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 24, marginBottom: 4 }}>🤖</Text>
+              <Text style={[
+                styles.helperChoiceText,
+                selectedSupportType === 'Navi' && styles.helperChoiceTextSelected
+              ]}>
+                Navi
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.helperChoiceBox,
+                selectedSupportType === 'Therapist' && styles.helperChoiceBoxSelected
+              ]}
+              onPress={() => setSelectedSupportType('Therapist')}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 24, marginBottom: 4 }}>🩺</Text>
+              <Text style={[
+                styles.helperChoiceText,
+                selectedSupportType === 'Therapist' && styles.helperChoiceTextSelected
+              ]}>
+                Therapist
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Section 4: Checkmark Button */}
+          <View style={{ alignItems: 'center', marginTop: 15 }}>
+            <TouchableOpacity
+              style={styles.checkmarkCircleBtn}
+              onPress={handleSupportSubmit}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.checkmarkIconText}>✓</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
     );
   };
@@ -6951,5 +7069,113 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#94A3B8',
     marginTop: 6,
+  },
+  supportLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  textingTypeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 16,
+  },
+  textingTypeBox: {
+    flex: 1,
+    height: 48,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  textingTypeBoxSelected: {
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+  },
+  textingTypeBoxText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  textingTypeBoxTextSelected: {
+    color: '#2563EB',
+  },
+  situationInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 14,
+    height: 100,
+    fontSize: 15,
+    color: '#1E293B',
+    textAlignVertical: 'top',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  helperChoiceRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  helperChoiceBox: {
+    flex: 1,
+    height: 72,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  helperChoiceBoxSelected: {
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+  },
+  helperChoiceText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  helperChoiceTextSelected: {
+    color: '#2563EB',
+  },
+  checkmarkCircleBtn: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  checkmarkIconText: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '800',
   },
 });
