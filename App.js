@@ -468,7 +468,7 @@ export default function App() {
   // User Sign In / Registration Form
   const [regName, setRegName] = useState('');
   const [regPhone, setRegPhone] = useState('');
-  const [regRole, setRegRole] = useState('Kid 👧');
+  const [regRole, setRegRole] = useState('Kid');
   const [regBio, setRegBio] = useState('');
 
   // Add Contact Modal states (supporting search by phone number!)
@@ -500,7 +500,7 @@ export default function App() {
       if (trustedAdult && p.phone && p.phone.replace(/\D/g, '') === trustedAdult.phone.replace(/\D/g, '')) return true;
       const role = (p.role || '').toLowerCase();
       const name = (p.name || '').toLowerCase();
-      return role.includes('parent') || role.includes('adult') || role.includes('mom') || role.includes('dad') || role.includes('guardian') || role.includes('brother') || role.includes('sister') || name.includes('mom') || name.includes('dad');
+      return role.includes('parent') || role.includes('adult') || role.includes('mom') || role.includes('dad') || role.includes('guardian') || role.includes('support') || role.includes('sister') || name.includes('mom') || name.includes('dad');
     });
   };
   const [adultName, setAdultName] = useState('');
@@ -607,14 +607,14 @@ export default function App() {
         roleStr.includes('mother') ||
         roleStr.includes('father') ||
         roleStr.includes('mom') ||
-        roleStr.includes('dad')) {
+        roleStr.includes('dad') ||
+        roleStr.includes('support')) {
       return true;
     }
     
     // Default fallback: if role includes kid keywords, return false
     if (roleStr.includes('kid') || 
         roleStr.includes('child') || 
-        roleStr.includes('brother') || 
         roleStr.includes('sister') || 
         roleStr.includes('sibling') ||
         roleStr.includes('friend')) {
@@ -641,6 +641,9 @@ export default function App() {
         if (stored) {
           const parsedUser = JSON.parse(stored);
           setCurrentUser(parsedUser);
+          if ((parsedUser.role || '').toLowerCase().includes('support')) {
+            setActiveTab('support_inbox');
+          }
           
           if (supabase) {
             console.log('[Supabase] Connecting with user:', parsedUser.name);
@@ -1146,6 +1149,32 @@ export default function App() {
     if (activeChat) return null;
     
     const isAdult = isCurrentUserAdult();
+    const isSupportUser = currentUser && (currentUser.role || '').toLowerCase().includes('support');
+
+    // Support users: only Requests inbox + Settings
+    if (isSupportUser) {
+      return (
+        <View style={styles.tabBar}>
+          <TouchableOpacity 
+            style={[styles.tabItem, activeTab === 'support_inbox' && styles.tabItemActive]}
+            onPress={() => setActiveTab('support_inbox')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabIcon, activeTab === 'support_inbox' && styles.tabIconActive]}>📥</Text>
+            <Text style={[styles.tabLabel, activeTab === 'support_inbox' && styles.tabLabelActive]} numberOfLines={1}>Requests</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.tabItem, activeTab === 'profile' && styles.tabItemActive]}
+            onPress={() => setActiveTab('profile')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabIcon, activeTab === 'profile' && styles.tabIconActive]}>⚙️</Text>
+            <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]} numberOfLines={1}>Settings</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
 
     return (
       <View style={styles.tabBar}>
@@ -1274,6 +1303,67 @@ export default function App() {
               </Text>
             </View>
           </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Support Inbox Screen — shows all support requests received from kids
+  const renderSupportInbox = () => {
+    // Gather all messages from all contacts that are support requests
+    const allMessages = Object.values(messages).flat();
+    const supportRequests = allMessages
+      .filter(m => m.sender === 'contact' && m.text && m.text.includes('[Support Request]'))
+      .sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+
+    return (
+      <View style={styles.tabContentContainer}>
+        <View style={styles.headerVertical}>
+          <View style={styles.headerBottomRow}>
+            <Text style={styles.headerTitle}>Support Requests</Text>
+          </View>
+        </View>
+
+        <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
+          {supportRequests.length > 0 ? (
+            supportRequests.map((msg, idx) => {
+              // Parse sender name from profiles
+              const senderProfile = profiles.find(p => p.id === msg.sender_id);
+              const senderName = senderProfile ? senderProfile.name : 'A Kid';
+              // Parse lines from message body
+              const lines = (msg.text || '').split('\n').filter(l => l && !l.includes('[Support Request]'));
+              return (
+                <View key={idx} style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 12,
+                  borderWidth: 1,
+                  borderColor: '#EF4444',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                    <Text style={{ fontSize: 20, marginRight: 8 }}>🆘</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#B91C1C', flex: 1 }}>{senderName}</Text>
+                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>{msg.time}</Text>
+                  </View>
+                  {lines.map((line, li) => (
+                    <Text key={li} style={{ fontSize: 13, color: '#475569', marginBottom: 3 }}>{line}</Text>
+                  ))}
+                </View>
+              );
+            })
+          ) : (
+            <View style={{ backgroundColor: '#FFFFFF', padding: 32, borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <Text style={{ fontSize: 40, marginBottom: 12 }}>📭</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#475569', marginBottom: 6 }}>No Requests Yet</Text>
+              <Text style={{ fontSize: 13, color: '#94A3B8', textAlign: 'center' }}>When kids submit a support request, it will appear here.</Text>
+            </View>
+          )}
         </ScrollView>
       </View>
     );
@@ -1536,7 +1626,7 @@ export default function App() {
     );
   };
 
-  const handleSupportSubmit = () => {
+  const handleSupportSubmit = async () => {
     if (!selectedTextingType) {
       Alert.alert("Tip", "Please select a Texting Type first!");
       return;
@@ -1550,9 +1640,35 @@ export default function App() {
       return;
     }
 
+    let messageSent = false;
+    if (supabase && currentUser) {
+      try {
+        const supportUsers = profiles.filter(p => (p.role || '').toLowerCase().includes('support'));
+        if (supportUsers.length > 0) {
+          const textingTypesLabels = {
+            1: "Friend 💬",
+            2: "Family 🏠",
+            3: "Group 👥",
+            4: "Other 🌐"
+          };
+          const textingTypeLabel = textingTypesLabels[selectedTextingType] || "Other 🌐";
+          const messageText = `🆘 [Support Request]\nType: ${textingTypeLabel}\nSituation: ${situationText}\nRequested helper: ${selectedSupportType}`;
+          
+          for (const supportUser of supportUsers) {
+            await sendSupabaseMessage(currentUser.id, supportUser.id, messageText);
+          }
+          messageSent = true;
+        }
+      } catch (err) {
+        console.error('[Support] Error sending support request message:', err);
+      }
+    }
+
     Alert.alert(
       "Support Requested",
-      `Thank you! Your request to talk to ${selectedSupportType} has been recorded. Navi is here to help! 🌟`,
+      messageSent 
+        ? `Thank you! Your request to talk to ${selectedSupportType} has been sent to our Support team. Navi is here to help! 🌟`
+        : `Thank you! Your request to talk to ${selectedSupportType} has been recorded. Navi is here to help! 🌟`,
       [
         {
           text: "Great!",
@@ -1589,7 +1705,7 @@ export default function App() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Section 1: Texting Type */}
-          <Text style={styles.supportLabel}>Texting Type</Text>
+          <Text style={styles.supportLabel}>Type</Text>
           <View style={styles.textingTypeRow}>
             {textingTypes.map(t => {
               const isSelected = selectedTextingType === t.id;
@@ -2783,6 +2899,7 @@ export default function App() {
         await upsertProfile(userProfile);
         await AsyncStorage.setItem('navi_user_profile', JSON.stringify(userProfile));
         setCurrentUser(userProfile);
+        setActiveTab((userProfile.role || '').toLowerCase().includes('support') ? 'support_inbox' : 'chats');
 
         if (existing) {
           Alert.alert("Welcome Back!", `Logged in as ${regName.trim()}.`);
@@ -2801,6 +2918,7 @@ export default function App() {
         };
         await AsyncStorage.setItem('navi_user_profile', JSON.stringify(userProfile));
         setCurrentUser(userProfile);
+        setActiveTab((userProfile.role || '').toLowerCase().includes('support') ? 'support_inbox' : 'chats');
       }
     } catch (e) {
       console.error(e);
@@ -3208,26 +3326,43 @@ export default function App() {
 
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Account Type</Text>
                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                  {['Kid 👧', 'Parent 👨', 'Brother 👦'].map((role) => (
-                    <TouchableOpacity
-                      key={role}
-                      style={{
-                        flex: 1,
-                        height: 44,
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: regRole === role ? '#2563EB' : '#E2E8F0',
-                        backgroundColor: regRole === role ? '#EFF6FF' : '#FFFFFF',
-                        justifyContent: 'center',
-                        alignItems: 'center'
-                      }}
-                      onPress={() => setRegRole(role)}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: regRole === role ? '#2563EB' : '#475569' }}>
-                        {role}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {['Kid', 'Parent', 'Support'].map((role) => {
+                    const isSelected = regRole === role;
+                    let activeBgColor = '#DBEAFE'; // light blue
+                    let activeBorderColor = '#3B82F6';
+                    let activeTextColor = '#1E40AF';
+                    
+                    if (role === 'Parent') {
+                      activeBgColor = '#DCFCE7'; // light green
+                      activeBorderColor = '#22C55E';
+                      activeTextColor = '#15803D';
+                    } else if (role === 'Support') {
+                      activeBgColor = '#FEE2E2'; // light red
+                      activeBorderColor = '#EF4444';
+                      activeTextColor = '#B91C1C';
+                    }
+                    
+                    return (
+                      <TouchableOpacity
+                        key={role}
+                        style={{
+                          flex: 1,
+                          height: 44,
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          borderColor: isSelected ? activeBorderColor : '#E2E8F0',
+                          backgroundColor: isSelected ? activeBgColor : '#FFFFFF',
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}
+                        onPress={() => setRegRole(role)}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? activeTextColor : '#475569' }}>
+                          {role}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
 
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Short Bio</Text>
@@ -3272,7 +3407,8 @@ export default function App() {
   }
 
   const isAdultBg = isCurrentUserAdult();
-  const bgThemeColor = isAdultBg ? '#C8FFC2' : '#E6F0FA';
+  const isSupport = currentUser && (currentUser.role || '').toLowerCase().includes('support');
+  const bgThemeColor = isSupport ? '#FEE2E2' : isAdultBg ? '#C8FFC2' : '#E6F0FA';
 
   return (
     <View style={[styles.safeArea, { backgroundColor: bgThemeColor }]}>
@@ -3584,7 +3720,9 @@ export default function App() {
         ) : (
           /* Main Tab Screen */
           <View style={[styles.container, { backgroundColor: bgThemeColor }]}>
-            {activeTab === 'chats' && (
+            {activeTab === 'support_inbox' && isSupport && renderSupportInbox()}
+
+            {activeTab === 'chats' && !isSupport && (
               <>
                 {/* Header */}
                 <View style={styles.headerVertical}>
@@ -3640,11 +3778,13 @@ export default function App() {
                   {filteredProfiles.length > 0 ? (
                     filteredProfiles.map(profile => {
                       const isSelected = selectedChatIds.includes(profile.id);
+                      const isSupport = (profile.role || '').toLowerCase().includes('support');
                       return (
                         <TouchableOpacity
                           key={profile.id}
                           style={[
                             styles.profileCard,
+                            isSupport && { backgroundColor: '#FEE2E2', borderColor: '#EF4444' },
                             selectModeActive && isSelected && styles.profileCardSelected
                           ]}
                           onPress={() => {
@@ -3705,7 +3845,7 @@ export default function App() {
 
 
 
-            {activeTab === 'dashboard' && isCurrentUserAdult() && renderDashboardScreen()}
+            {activeTab === 'dashboard' && isCurrentUserAdult() && !isSupport && renderDashboardScreen()}
 
             {activeTab === 'resources' && renderResourcesScreen()}
 
