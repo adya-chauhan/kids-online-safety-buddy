@@ -428,8 +428,8 @@ const RenderAvatar = ({ name, avatar, style }) => {
   const firstLetter = name ? name.trim().charAt(0).toUpperCase() : '?';
   const bgColor = getAvatarColor(name);
 
-  // If avatar is a valid local asset or URL, render it
-  if (avatar && (typeof avatar === 'number' || (typeof avatar === 'object' && avatar.uri) || (typeof avatar === 'string' && avatar.startsWith('http')))) {
+  // If avatar is a valid local asset or URL (including base64 data URI), render it
+  if (avatar && (typeof avatar === 'number' || (typeof avatar === 'object' && avatar.uri) || (typeof avatar === 'string' && (avatar.startsWith('http') || avatar.startsWith('data:image'))))) {
     const source = typeof avatar === 'string' ? { uri: avatar } : avatar;
     return <Image source={source} style={style} />;
   }
