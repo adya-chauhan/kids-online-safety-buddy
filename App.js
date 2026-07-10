@@ -2007,9 +2007,8 @@ export default function App() {
               activeOpacity={0.7}
             >
               <View style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
+                width: 48,
+                height: 36,
                 overflow: 'hidden',
                 marginBottom: 2,
                 justifyContent: 'center',
@@ -2018,10 +2017,10 @@ export default function App() {
                 <Image 
                   source={require('./assets/navi_thumbs_up.png')} 
                   style={{
-                    width: 64,
-                    height: 64,
+                    width: 72,
+                    height: 72,
                     resizeMode: 'contain',
-                    marginTop: 15,
+                    marginTop: 0,
                   }}
                 />
               </View>
