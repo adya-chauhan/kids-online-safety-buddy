@@ -4096,13 +4096,13 @@ export default function App() {
                           onChangeText={setSearchPhoneQuery}
                         />
                         <TouchableOpacity 
-                          style={[styles.sendButton, { width: 80, height: 44, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
+                          style={[styles.sendButton, { width: 50, height: 44, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
                           onPress={handleSearchContactByPhone}
                         >
                           {isSearchingContact ? (
                             <ActivityIndicator size="small" color="#FFFFFF" />
                           ) : (
-                            <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Search</Text>
+                            <Text style={{ fontSize: 18 }}>🔍</Text>
                           )}
                         </TouchableOpacity>
                       </View>
