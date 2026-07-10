@@ -2413,12 +2413,7 @@ export default function App() {
   const renderProfileScreen = () => {
     const settingsItems = [
       { id: 'profile', title: 'Edit Profile', desc: 'Change your photo, name, and status', emoji: '👤', color: '#EFF6FF', textColor: '#2563EB' },
-      { id: 'safety', title: 'Parental Control & Safety', desc: 'Manage passcode lock, filters, and logs', emoji: '🛡️', color: '#ECFDF5', textColor: '#059669' },
       { id: 'notifications', title: 'Notifications', desc: 'Message sounds, alerts, and mute settings', emoji: '🔔', color: '#FFFBEB', textColor: '#D97706' },
-      { id: 'chats', title: 'Chat Settings', desc: 'Change chat theme, font size, and background', emoji: '💬', color: '#FDF2F8', textColor: '#DB2777' },
-      { id: 'privacy', title: 'Privacy & Last Seen', desc: 'Control who can see your online status', emoji: '🔒', color: '#F5F3FF', textColor: '#7C3AED' },
-      { id: 'help', title: 'Help & Support', desc: 'FAQ guide, safety tips, and customer care', emoji: '❓', color: '#F1F5F9', textColor: '#475569' },
-      { id: 'about', title: 'About Navi', desc: 'Version 1.0.0 • Terms & Privacy Policy', emoji: 'ℹ️', color: '#F0FDFA', textColor: '#0D9488' }
     ];
 
     return (
