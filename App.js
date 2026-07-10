@@ -2467,8 +2467,8 @@ export default function App() {
       <View style={styles.tabContentContainer}>
         {/* Header */}
         <View style={styles.headerVertical}>
-          <View style={styles.headerBottomRow}>
-            <TouchableOpacity onPress={() => setSettingsSubScreen(null)} style={{ marginRight: 12 }}>
+          <View style={[styles.headerBottomRow, { justifyContent: 'flex-start', alignItems: 'center' }]}>
+            <TouchableOpacity onPress={() => setSettingsSubScreen(null)} style={{ marginRight: 16 }}>
               <Text style={{ fontSize: 24, color: '#1E3A8A', fontWeight: '800' }}>←</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Edit Profile</Text>
@@ -2564,8 +2564,8 @@ export default function App() {
       <View style={styles.tabContentContainer}>
         {/* Header */}
         <View style={styles.headerVertical}>
-          <View style={styles.headerBottomRow}>
-            <TouchableOpacity onPress={() => setSettingsSubScreen(null)} style={{ marginRight: 12 }}>
+          <View style={[styles.headerBottomRow, { justifyContent: 'flex-start', alignItems: 'center' }]}>
+            <TouchableOpacity onPress={() => setSettingsSubScreen(null)} style={{ marginRight: 16 }}>
               <Text style={{ fontSize: 24, color: '#1E3A8A', fontWeight: '800' }}>←</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Notifications</Text>
