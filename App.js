@@ -2010,6 +2010,7 @@ export default function App() {
                 width: 60,
                 height: 50,
                 overflow: 'hidden',
+                marginTop: 6,
                 marginBottom: 2,
                 justifyContent: 'center',
                 alignItems: 'center',
@@ -2045,6 +2046,7 @@ export default function App() {
                 height: 50,
                 justifyContent: 'center',
                 alignItems: 'center',
+                marginTop: 6,
                 marginBottom: 2,
               }}>
                 <Text style={{ fontSize: 32 }}>🩺</Text>
