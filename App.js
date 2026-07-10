@@ -1165,14 +1165,25 @@ export default function App() {
         )}
 
         {!isAdult && (
-          <TouchableOpacity 
-            style={[styles.tabItem, activeTab === 'resources' && styles.tabItemActive]}
-            onPress={() => setActiveTab('resources')}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.tabIcon, activeTab === 'resources' && styles.tabIconActive]}>📚</Text>
-            <Text style={[styles.tabLabel, activeTab === 'resources' && styles.tabLabelActive]} numberOfLines={1}>Resources</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity 
+              style={[styles.tabItem, activeTab === 'resources' && styles.tabItemActive]}
+              onPress={() => setActiveTab('resources')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.tabIcon, activeTab === 'resources' && styles.tabIconActive]}>📚</Text>
+              <Text style={[styles.tabLabel, activeTab === 'resources' && styles.tabLabelActive]} numberOfLines={1}>Resources</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.tabItem, activeTab === 'kids_page' && styles.tabItemActive]}
+              onPress={() => setActiveTab('kids_page')}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.tabIcon, activeTab === 'kids_page' && styles.tabIconActive]}>🎈</Text>
+              <Text style={[styles.tabLabel, activeTab === 'kids_page' && styles.tabLabelActive]} numberOfLines={1}>Kid Page</Text>
+            </TouchableOpacity>
+          </>
         )}
 
         <TouchableOpacity 
@@ -1516,6 +1527,33 @@ export default function App() {
             </View>
           )}
         </ScrollView>
+      </View>
+    );
+  };
+
+  const renderKidsPage = () => {
+    return (
+      <View style={styles.tabContentContainer}>
+        {/* Header */}
+        <View style={styles.headerVertical}>
+          <View style={styles.headerBottomRow}>
+            <Text style={styles.headerTitle}>Kids Corner</Text>
+            <Image 
+              source={require('./assets/navi_thumbs_up.png')} 
+              style={{ width: 54, height: 54, resizeMode: 'contain', marginRight: 4 }} 
+            />
+          </View>
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>🎈</Text>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: '#1E293B', marginBottom: 8, textAlign: 'center' }}>
+            Empty Page
+          </Text>
+          <Text style={{ fontSize: 15, color: '#64748B', textAlign: 'center', lineHeight: 22 }}>
+            This page is created specifically for child users. Stay tuned for exciting new features coming soon! 🌟
+          </Text>
+        </View>
       </View>
     );
   };
@@ -3556,6 +3594,8 @@ export default function App() {
             {activeTab === 'dashboard' && isCurrentUserAdult() && renderDashboardScreen()}
 
             {activeTab === 'resources' && renderResourcesScreen()}
+
+            {activeTab === 'kids_page' && !isCurrentUserAdult() && renderKidsPage()}
 
             {activeTab === 'safety' && renderSafetyScreen()}
 
