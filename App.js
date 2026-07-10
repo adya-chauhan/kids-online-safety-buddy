@@ -20,7 +20,8 @@ import {
   LayoutAnimation,
   UIManager,
   Keyboard,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  RefreshControl
 } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -862,8 +863,12 @@ export default function App() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectModeActive, setSelectModeActive] = useState(false);
   const [selectedChatIds, setSelectedChatIds] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('chats'); // 'chats', 'safety', 'profile'
   const [activeCall, setActiveCall] = useState(null); // { contactName, type: 'video' | 'voice' }
+
+
 
   const saveInterventionLogToSupabase = async (action, type, originalText = "") => {
     if (!supabase || !currentUser || !activeChat) return;
@@ -1084,6 +1089,12 @@ export default function App() {
     } catch (err) {
       console.error('[Dashboard] Error updating stats:', err);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchRealDashboardData();
+    setRefreshing(false);
   };
 
   useEffect(() => {
@@ -1313,7 +1324,18 @@ export default function App() {
           </View>
         </View>
 
-        <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          style={styles.scrollList} 
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#1D4ED8"]}
+              tintColor="#1D4ED8"
+            />
+          }
+        >
           {/* Safety Rating Overview Card */}
           <View style={styles.safetyOverviewCard}>
             <View style={styles.safetyScoreWrapper}>
