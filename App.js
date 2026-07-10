@@ -21,7 +21,8 @@ import {
   UIManager,
   Keyboard,
   TouchableWithoutFeedback,
-  RefreshControl
+  RefreshControl,
+  Switch
 } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -519,6 +520,18 @@ export default function App() {
   const [selectedSupportType, setSelectedSupportType] = useState(null);
   const [pendingSupportRequests, setPendingSupportRequests] = useState([]);
   const [childSentRequests, setChildSentRequests] = useState([]); // fetched from Supabase
+
+  // Settings sub-screen states
+  const [settingsSubScreen, setSettingsSubScreen] = useState(null); // null, 'edit_profile', 'notifications'
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
+
+  // Notification toggle states
+  const [notifSound, setNotifSound] = useState(true);
+  const [notifVibration, setNotifVibration] = useState(true);
+  const [notifPreview, setNotifPreview] = useState(true);
+  const [notifMute, setNotifMute] = useState(false);
 
   // Interception states for safety reviews
   const [pendingImage, setPendingImage] = useState(null); // { uri, text }
@@ -2410,7 +2423,273 @@ export default function App() {
   };
 
   // Settings screen for child
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert("Error", "Please enter your name");
+      return;
+    }
+    const updatedUser = {
+      ...currentUser,
+      name: editName.trim(),
+      bio: editBio.trim(),
+      avatar_url: editAvatar.trim(),
+    };
+    if (supabase) {
+      try {
+        await upsertProfile(updatedUser);
+      } catch (err) {
+        console.error("Error saving profile to Supabase:", err);
+      }
+    }
+    await AsyncStorage.setItem('navi_user_profile', JSON.stringify(updatedUser));
+    setCurrentUser(updatedUser);
+    
+    // Refresh local profiles to reflect changes
+    setProfiles(prev => prev.map(p => 
+      p.id === updatedUser.id ? { ...p, name: updatedUser.name, bio: updatedUser.bio, avatar: updatedUser.avatar_url } : p
+    ));
+
+    setSettingsSubScreen(null);
+    Alert.alert("Success", "Profile updated successfully!");
+  };
+
+  const renderEditProfileScreen = () => {
+    const presetAvatars = [
+      { name: 'Puppy', url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=150' },
+      { name: 'Kitten', url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=150' },
+      { name: 'Bunny', url: 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?w=150' },
+      { name: 'Bear', url: 'https://images.unsplash.com/photo-1589656966895-2f33e7653819?w=150' },
+      { name: 'Panda', url: 'https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=150' },
+      { name: 'Fox', url: 'https://images.unsplash.com/photo-1474511320723-9a56873867b5?w=150' }
+    ];
+
+    return (
+      <View style={styles.tabContentContainer}>
+        {/* Header */}
+        <View style={styles.headerVertical}>
+          <View style={styles.headerBottomRow}>
+            <TouchableOpacity onPress={() => setSettingsSubScreen(null)} style={{ marginRight: 12 }}>
+              <Text style={{ fontSize: 24, color: '#1E3A8A', fontWeight: '800' }}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Edit Profile</Text>
+          </View>
+        </View>
+
+        <ScrollView style={styles.scrollList} contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 }]}>
+          {/* Avatar Preview */}
+          <View style={{ alignItems: 'center', marginVertical: 20 }}>
+            <RenderAvatar 
+              name={editName || 'User'} 
+              avatar={editAvatar} 
+              style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#3B82F6' }} 
+            />
+            <Text style={{ marginTop: 8, fontSize: 14, color: '#64748B' }}>Choose an avatar below or enter a URL</Text>
+          </View>
+
+          {/* Preset Avatars */}
+          <Text style={styles.supportLabel}>Preset Avatars</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20, justifyContent: 'center' }}>
+            {presetAvatars.map((av, idx) => (
+              <TouchableOpacity 
+                key={idx} 
+                onPress={() => setEditAvatar(av.url)}
+                style={{
+                  borderWidth: editAvatar === av.url ? 3 : 1,
+                  borderColor: editAvatar === av.url ? '#2563EB' : '#E2E8F0',
+                  borderRadius: 12,
+                  padding: 4,
+                  backgroundColor: '#FFFFFF'
+                }}
+              >
+                <Image source={{ uri: av.url }} style={{ width: 50, height: 50, borderRadius: 8 }} />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Custom Avatar URL */}
+          <Text style={styles.supportLabel}>Custom Avatar URL</Text>
+          <TextInput 
+            style={styles.situationInput}
+            value={editAvatar}
+            onChangeText={setEditAvatar}
+            placeholder="Paste an image URL here..."
+            placeholderTextColor="#94A3B8"
+            height={50}
+          />
+
+          {/* Display Name */}
+          <Text style={styles.supportLabel}>Display Name</Text>
+          <TextInput 
+            style={styles.situationInput}
+            value={editName}
+            onChangeText={setEditName}
+            placeholder="Enter your name..."
+            placeholderTextColor="#94A3B8"
+            height={50}
+          />
+
+          {/* Status/Bio */}
+          <Text style={styles.supportLabel}>Status / Bio</Text>
+          <TextInput 
+            style={styles.situationInput}
+            value={editBio}
+            onChangeText={setEditBio}
+            placeholder="Tell us about yourself..."
+            placeholderTextColor="#94A3B8"
+            multiline={true}
+            numberOfLines={3}
+            height={80}
+          />
+
+          {/* Save Button */}
+          <TouchableOpacity 
+            style={{
+              backgroundColor: '#2563EB',
+              paddingVertical: 14,
+              borderRadius: 12,
+              alignItems: 'center',
+              marginTop: 10
+            }}
+            onPress={handleSaveProfile}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>Save Changes</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const renderNotificationsScreen = () => {
+    return (
+      <View style={styles.tabContentContainer}>
+        {/* Header */}
+        <View style={styles.headerVertical}>
+          <View style={styles.headerBottomRow}>
+            <TouchableOpacity onPress={() => setSettingsSubScreen(null)} style={{ marginRight: 12 }}>
+              <Text style={{ fontSize: 24, color: '#1E3A8A', fontWeight: '800' }}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Notifications</Text>
+          </View>
+        </View>
+
+        <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
+          <View style={[styles.settingsListCard, { padding: 8 }]}>
+            {/* Sound Toggle */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 16,
+              paddingHorizontal: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: '#F1F5F9'
+            }}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#1E293B' }}>Play Sounds</Text>
+                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Play sound effects for incoming messages</Text>
+              </View>
+              <Switch 
+                value={notifSound} 
+                onValueChange={setNotifSound} 
+                trackColor={{ false: '#CBD5E1', true: '#BFDBFE' }}
+                thumbColor={notifSound ? '#2563EB' : '#F1F5F9'}
+              />
+            </View>
+
+            {/* Vibration Toggle */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 16,
+              paddingHorizontal: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: '#F1F5F9'
+            }}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#1E293B' }}>Vibrate</Text>
+                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Vibrate on new alert notifications</Text>
+              </View>
+              <Switch 
+                value={notifVibration} 
+                onValueChange={setNotifVibration} 
+                trackColor={{ false: '#CBD5E1', true: '#BFDBFE' }}
+                thumbColor={notifVibration ? '#2563EB' : '#F1F5F9'}
+              />
+            </View>
+
+            {/* Preview Toggle */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 16,
+              paddingHorizontal: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: '#F1F5F9'
+            }}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#1E293B' }}>Message Previews</Text>
+                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Show sender name and message text in notifications</Text>
+              </View>
+              <Switch 
+                value={notifPreview} 
+                onValueChange={setNotifPreview} 
+                trackColor={{ false: '#CBD5E1', true: '#BFDBFE' }}
+                thumbColor={notifPreview ? '#2563EB' : '#F1F5F9'}
+              />
+            </View>
+
+            {/* Mute Toggle */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 16,
+              paddingHorizontal: 12,
+            }}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#1E293B' }}>Do Not Disturb</Text>
+                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Mute all notifications temporarily</Text>
+              </View>
+              <Switch 
+                value={notifMute} 
+                onValueChange={setNotifMute} 
+                trackColor={{ false: '#CBD5E1', true: '#BFDBFE' }}
+                thumbColor={notifMute ? '#2563EB' : '#F1F5F9'}
+              />
+            </View>
+          </View>
+
+          {/* Confirm Button */}
+          <TouchableOpacity 
+            style={{
+              backgroundColor: '#2563EB',
+              paddingVertical: 14,
+              borderRadius: 12,
+              alignItems: 'center',
+              marginTop: 20
+            }}
+            onPress={() => {
+              setSettingsSubScreen(null);
+              Alert.alert("Success", "Notification settings saved!");
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>Save & Go Back</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  };
+
   const renderProfileScreen = () => {
+    if (settingsSubScreen === 'edit_profile') {
+      return renderEditProfileScreen();
+    }
+    if (settingsSubScreen === 'notifications') {
+      return renderNotificationsScreen();
+    }
+
     const settingsItems = [
       { id: 'profile', title: 'Edit Profile', desc: 'Change your photo, name, and status', emoji: '👤', color: '#EFF6FF', textColor: '#2563EB' },
       { id: 'notifications', title: 'Notifications', desc: 'Message sounds, alerts, and mute settings', emoji: '🔔', color: '#FFFBEB', textColor: '#D97706' },
@@ -2510,7 +2789,16 @@ export default function App() {
                   styles.settingsRow,
                   idx === settingsItems.length - 1 && { borderBottomWidth: 0 }
                 ]}
-                onPress={() => alert(`${item.title} settings are coming soon!`)}
+                onPress={() => {
+                  if (item.id === 'profile') {
+                    setEditName(currentUser?.name || '');
+                    setEditBio(currentUser?.bio || '');
+                    setEditAvatar(currentUser?.avatar_url || '');
+                    setSettingsSubScreen('edit_profile');
+                  } else if (item.id === 'notifications') {
+                    setSettingsSubScreen('notifications');
+                  }
+                }}
                 activeOpacity={0.7}
               >
                 <View style={[styles.settingsRowEmojiBg, { backgroundColor: item.color }]}>
