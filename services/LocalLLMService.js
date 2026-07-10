@@ -148,6 +148,16 @@ Context/Type: "${textingType}"
 Provide 1 to 2 sentences of professional, actionable advice for a support worker/counselor on how to best respond to and help this child. Do not address the child directly. Address the support worker. Keep it under 40 words.`;
 
   const result = await callOllama('gemma:2b', prompt);
-  return result ? result.trim().replace(/^["']|["']$/g, '') : "Listen actively, validate their feelings, and help them set a kind but firm boundary.";
+  return result ? result.trim().replace(/^["|']|["|']$/g, '') : "Listen actively, validate their feelings, and help them set a kind but firm boundary.";
 };
 
+// 6. Generate Navi's friendly advice spoken directly to the child
+export const generateNaviChildAdvice = async (situation, textingType) => {
+  const prompt = `You are Navi, a friendly and caring AI safety buddy for kids. A child told you about something upsetting happening to them online or over text.
+Child's situation: "${situation}"
+Context/Type: "${textingType}"
+Reply directly to the child in 2 to 3 warm, supportive, encouraging sentences. Use simple language suitable for kids. Be kind and reassuring. Do not be alarming. Start with something like "Hey, I hear you..." or "I'm so glad you told me...". Keep it under 50 words.`;
+
+  const result = await callOllama('gemma:2b', prompt);
+  return result ? result.trim().replace(/^["|']|["|']$/g, '') : "Hey, I hear you! What you're going through sounds really tough, but you did the right thing by sharing it. Remember, it's not your fault and I'm always here for you! 💙";
+};

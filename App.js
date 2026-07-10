@@ -38,7 +38,8 @@ import {
   generateContactReply, 
   generatePoliteSuggestionsList, 
   generateSimulatedMessage,
-  generateSupportAdvice
+  generateSupportAdvice,
+  generateNaviChildAdvice
 } from './services/LocalLLMService';
 
 import { 
@@ -1946,60 +1947,101 @@ export default function App() {
       return;
     }
 
-    let messageSent = false;
-    if (supabase && currentUser) {
-      try {
-        const supportUsers = profiles.filter(p => (p.role || '').toLowerCase().includes('support'));
-        if (supportUsers.length > 0) {
-          const textingTypesLabels = {
-            1: "Friend 💬",
-            2: "Family 🏠",
-            3: "Group 👥",
-            4: "Other 🌐"
-          };
-          const textingTypeLabel = textingTypesLabels[selectedTextingType] || "Other 🌐";
-          const messageText = `🆘 [Support Request]\nType: ${textingTypeLabel}\nSituation: ${situationText}\nRequested helper: ${selectedSupportType}`;
-          
-          for (const supportUser of supportUsers) {
-            await sendSupabaseMessage(currentUser.id, supportUser.id, messageText);
-          }
-          messageSent = true;
-        }
-      } catch (err) {
-        console.error('[Support] Error sending support request message:', err);
-      }
-    }
+    const textingTypesLabels = { 1: "Friend 💬", 2: "Family 🏠", 3: "Group 👥", 4: "Other 🌐" };
+    const textingTypeLabel = textingTypesLabels[selectedTextingType] || "Other 🌐";
+    const reqId = Date.now();
+    const reqTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Save request to pending list
-    const textingTypesLabels2 = { 1: "Friend 💬", 2: "Family 🏠", 3: "Group 👥", 4: "Other 🌐" };
-    setPendingSupportRequests(prev => [
-      ...prev,
-      {
-        id: Date.now(),
-        type: textingTypesLabels2[selectedTextingType] || "Other 🌐",
-        situation: situationText,
-        helper: selectedSupportType,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'Pending',
-      }
-    ]);
-
-    Alert.alert(
-      "Support Requested",
-      messageSent 
-        ? `Thank you! Your request to talk to ${selectedSupportType} has been sent to our Support team. Navi is here to help! 🌟`
-        : `Thank you! Your request to talk to ${selectedSupportType} has been recorded. Navi is here to help! 🌟`,
-      [
+    if (selectedSupportType === 'Navi') {
+      // --- NAVI PATH ---
+      // 1. Add a "loading" card to pending messages immediately
+      setPendingSupportRequests(prev => [
+        ...prev,
         {
-          text: "Great!",
-          onPress: () => {
-            setSelectedTextingType(null);
-            setSituationText('');
-            setSelectedSupportType(null);
-          }
+          id: reqId,
+          type: textingTypeLabel,
+          situation: situationText,
+          helper: 'Navi',
+          time: reqTime,
+          status: 'Pending',
+          naviAdvice: null,  // loading
+          isNaviCard: true,
         }
-      ]
-    );
+      ]);
+
+      // 2. Silently notify support (FYI only — not a help request)
+      if (supabase && currentUser) {
+        try {
+          const supportUsers = profiles.filter(p => (p.role || '').toLowerCase().includes('support'));
+          const fyi = `ℹ️ [Navi FYI]\nA child is using Navi for support.\nType: ${textingTypeLabel}\nSituation: ${situationText}`;
+          for (const supportUser of supportUsers) {
+            await sendSupabaseMessage(currentUser.id, supportUser.id, fyi);
+          }
+        } catch (err) {
+          console.error('[Navi FYI] Error notifying support:', err);
+        }
+      }
+
+      // 3. Generate Navi's advice in background, then update the card
+      setSelectedTextingType(null);
+      setSituationText('');
+      setSelectedSupportType(null);
+
+      try {
+        const advice = await generateNaviChildAdvice(situationText, textingTypeLabel);
+        setPendingSupportRequests(prev => prev.map(r =>
+          r.id === reqId ? { ...r, naviAdvice: advice, status: 'Replied' } : r
+        ));
+      } catch (e) {
+        console.error('[Navi advice] Error:', e);
+        setPendingSupportRequests(prev => prev.map(r =>
+          r.id === reqId ? { ...r, naviAdvice: "Hey, I hear you! You did the right thing by sharing this. Remember, it's not your fault and I'm always here for you! 💙", status: 'Replied' } : r
+        ));
+      }
+
+    } else {
+      // --- THERAPIST PATH ---
+      let messageSent = false;
+      if (supabase && currentUser) {
+        try {
+          const supportUsers = profiles.filter(p => (p.role || '').toLowerCase().includes('support'));
+          if (supportUsers.length > 0) {
+            const messageText = `🆘 [Support Request]\nType: ${textingTypeLabel}\nSituation: ${situationText}\nRequested helper: ${selectedSupportType}`;
+            for (const supportUser of supportUsers) {
+              await sendSupabaseMessage(currentUser.id, supportUser.id, messageText);
+            }
+            messageSent = true;
+          }
+        } catch (err) {
+          console.error('[Support] Error sending support request message:', err);
+        }
+      }
+
+      setPendingSupportRequests(prev => [
+        ...prev,
+        {
+          id: reqId,
+          type: textingTypeLabel,
+          situation: situationText,
+          helper: selectedSupportType,
+          time: reqTime,
+          status: 'Pending',
+          isNaviCard: false,
+        }
+      ]);
+
+      Alert.alert(
+        "Support Requested",
+        messageSent
+          ? `Thank you! Your request has been sent to our Support team. Navi is here to help! 🌟`
+          : `Thank you! Your request has been recorded. Navi is here to help! 🌟`,
+        [{ text: "Great!", onPress: () => {
+          setSelectedTextingType(null);
+          setSituationText('');
+          setSelectedSupportType(null);
+        }}]
+      );
+    }
   };
 
   const renderKidsPage = () => {
@@ -2136,48 +2178,77 @@ export default function App() {
             <View style={{ marginTop: 28 }}>
               <Text style={[styles.supportLabel, { marginBottom: 12 }]}>Your pending messages</Text>
 
-              {/* Child's locally-tracked requests (just submitted this session) */}
+              {/* Child's locally-tracked requests (this session) */}
               {pendingSupportRequests.slice().reverse().map(req => {
-                // Look for replies from the support user in messages state
-                const replies = req.supportUserId
-                  ? (messages[req.supportUserId] || []).filter(m => m.sender === 'contact')
-                  : [];
-                const hasReply = replies.length > 0;
-                return (
-                  <View key={req.id} style={{
-                    backgroundColor: '#F8FAFF',
-                    borderWidth: 1.5,
-                    borderColor: hasReply ? '#6EE7B7' : '#BFDBFE',
-                    borderRadius: 14,
-                    padding: 14,
-                    marginBottom: 12,
-                  }}>
-                    {/* Original request */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB' }}>{req.type}</Text>
-                      <Text style={{ fontSize: 11, color: '#94A3B8' }}>{req.time}</Text>
-                    </View>
-                    <Text style={{ fontSize: 13, color: '#1E293B', marginBottom: 6 }} numberOfLines={3}>{req.situation}</Text>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasReply ? 12 : 0 }}>
-                      <Text style={{ fontSize: 12, color: '#64748B' }}>Sent to: <Text style={{ fontWeight: '700' }}>{req.helper}</Text></Text>
-                      <View style={{ backgroundColor: hasReply ? '#D1FAE5' : '#FEF9C3', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 }}>
-                        <Text style={{ fontSize: 11, color: hasReply ? '#059669' : '#CA8A04', fontWeight: '700' }}>{hasReply ? '✅ Responded' : '⏳ Pending'}</Text>
+                if (req.isNaviCard) {
+                  // --- NAVI CARD ---
+                  return (
+                    <View key={req.id} style={{
+                      backgroundColor: '#EFF6FF',
+                      borderWidth: 1.5,
+                      borderColor: '#93C5FD',
+                      borderRadius: 14,
+                      padding: 14,
+                      marginBottom: 12,
+                    }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#1D4ED8' }}>🤖 Navi · {req.type}</Text>
+                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>{req.time}</Text>
+                      </View>
+                      <Text style={{ fontSize: 13, color: '#1E293B', marginBottom: 10 }} numberOfLines={2}>{req.situation}</Text>
+                      {/* Navi's advice */}
+                      <View style={{ backgroundColor: '#DBEAFE', borderRadius: 10, padding: 12 }}>
+                        {req.naviAdvice ? (
+                          <>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#1D4ED8', marginBottom: 4 }}>💙 Navi says:</Text>
+                            <Text style={{ fontSize: 13, color: '#1E3A8A', lineHeight: 19 }}>{req.naviAdvice}</Text>
+                          </>
+                        ) : (
+                          <Text style={{ fontSize: 13, color: '#3B82F6', fontStyle: 'italic' }}>Navi is thinking... 💭</Text>
+                        )}
                       </View>
                     </View>
-                    {/* Replies from support */}
-                    {hasReply && (
-                      <View style={{ borderTopWidth: 1, borderTopColor: '#D1FAE5', paddingTop: 10 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginBottom: 6 }}>💬 Response from support:</Text>
-                        {replies.map((r, i) => (
-                          <View key={i} style={{ backgroundColor: '#ECFDF5', borderRadius: 10, padding: 10, marginBottom: 4 }}>
-                            <Text style={{ fontSize: 13, color: '#1E293B' }}>{r.text}</Text>
-                            <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>{r.time}</Text>
-                          </View>
-                        ))}
+                  );
+                } else {
+                  // --- THERAPIST CARD ---
+                  const replies = req.supportUserId
+                    ? (messages[req.supportUserId] || []).filter(m => m.sender === 'contact')
+                    : [];
+                  const hasReply = replies.length > 0;
+                  return (
+                    <View key={req.id} style={{
+                      backgroundColor: '#F8FAFF',
+                      borderWidth: 1.5,
+                      borderColor: hasReply ? '#6EE7B7' : '#BFDBFE',
+                      borderRadius: 14,
+                      padding: 14,
+                      marginBottom: 12,
+                    }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB' }}>{req.type}</Text>
+                        <Text style={{ fontSize: 11, color: '#94A3B8' }}>{req.time}</Text>
                       </View>
-                    )}
-                  </View>
-                );
+                      <Text style={{ fontSize: 13, color: '#1E293B', marginBottom: 6 }} numberOfLines={3}>{req.situation}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasReply ? 12 : 0 }}>
+                        <Text style={{ fontSize: 12, color: '#64748B' }}>Sent to: <Text style={{ fontWeight: '700' }}>{req.helper}</Text></Text>
+                        <View style={{ backgroundColor: hasReply ? '#D1FAE5' : '#FEF9C3', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 11, color: hasReply ? '#059669' : '#CA8A04', fontWeight: '700' }}>{hasReply ? '✅ Responded' : '⏳ Pending'}</Text>
+                        </View>
+                      </View>
+                      {hasReply && (
+                        <View style={{ borderTopWidth: 1, borderTopColor: '#D1FAE5', paddingTop: 10 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginBottom: 6 }}>💬 Response from support:</Text>
+                          {replies.map((r, i) => (
+                            <View key={i} style={{ backgroundColor: '#ECFDF5', borderRadius: 10, padding: 10, marginBottom: 4 }}>
+                              <Text style={{ fontSize: 13, color: '#1E293B' }}>{r.text}</Text>
+                              <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>{r.time}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  );
+                }
               })}
 
               {/* Historic requests fetched from Supabase */}
