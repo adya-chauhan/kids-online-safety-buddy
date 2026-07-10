@@ -863,7 +863,6 @@ export default function App() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectModeActive, setSelectModeActive] = useState(false);
   const [selectedChatIds, setSelectedChatIds] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('chats'); // 'chats', 'safety', 'profile'
   const [activeCall, setActiveCall] = useState(null); // { contactName, type: 'video' | 'voice' }
