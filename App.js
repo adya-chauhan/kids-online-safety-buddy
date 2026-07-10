@@ -3120,7 +3120,7 @@ export default function App() {
   }
 
   const isAdultBg = isCurrentUserAdult();
-  const bgThemeColor = isAdultBg ? '#99D98C' : '#E6F0FA';
+  const bgThemeColor = isAdultBg ? '#C8FFC2' : '#E6F0FA';
 
   return (
     <View style={[styles.safeArea, { backgroundColor: bgThemeColor }]}>
