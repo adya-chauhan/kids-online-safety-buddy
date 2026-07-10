@@ -3470,7 +3470,7 @@ export default function App() {
                 </View>
 
                 {/* Unified Top Controls Block (Smushed Together, White Background) */}
-                <View style={styles.topControlsBlock}>
+                <View style={[styles.topControlsBlock, { backgroundColor: bgThemeColor }]}>
                   {/* Search Bar */}
                   <View style={styles.searchContainer}>
                     <TextInput
