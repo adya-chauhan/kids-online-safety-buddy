@@ -4096,7 +4096,7 @@ export default function App() {
                           onChangeText={setSearchPhoneQuery}
                         />
                         <TouchableOpacity 
-                          style={[styles.sendButton, { width: 50, height: 44, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
+                          style={[styles.sendButton, { width: 50, height: 44, paddingHorizontal: 0, backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center' }]} 
                           onPress={handleSearchContactByPhone}
                         >
                           {isSearchingContact ? (
