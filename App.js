@@ -1537,7 +1537,7 @@ export default function App() {
         {/* Header */}
         <View style={styles.headerVertical}>
           <View style={styles.headerBottomRow}>
-            <Text style={styles.headerTitle}>Kids Corner</Text>
+            <Text style={styles.headerTitle}>Support Center</Text>
             <Image 
               source={require('./assets/navi_thumbs_up.png')} 
               style={{ width: 54, height: 54, resizeMode: 'contain', marginRight: 4 }} 
