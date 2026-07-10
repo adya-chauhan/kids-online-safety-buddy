@@ -517,6 +517,7 @@ export default function App() {
   const [situationText, setSituationText] = useState('');
   const [selectedSupportType, setSelectedSupportType] = useState(null);
   const [pendingSupportRequests, setPendingSupportRequests] = useState([]);
+  const [childSentRequests, setChildSentRequests] = useState([]); // fetched from Supabase
 
   // Interception states for safety reviews
   const [pendingImage, setPendingImage] = useState(null); // { uri, text }
@@ -685,9 +686,47 @@ export default function App() {
           }
           return merged;
         });
+        return filteredDbProfiles; // Return so callers can use immediately
       }
     } catch (e) {
       console.error('[Profiles] Error refreshing profiles:', e);
+    }
+  };
+
+  // Fetch messages this child previously sent to support users
+  const fetchChildSentRequests = async (userId, allProfiles) => {
+    if (!supabase || !userId) return;
+    try {
+      const supportIds = (allProfiles || []).filter(p => (p.role || '').toLowerCase().includes('support')).map(p => p.id);
+      if (supportIds.length === 0) return;
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('sender_id', userId)
+        .in('recipient_id', supportIds)
+        .ilike('text', '%[Support Request]%')
+        .order('created_at', { ascending: false });
+      if (error) { console.error('[Child] Error fetching sent requests:', error.message); return; }
+      if (data) {
+        const mapped = data.map(m => {
+          const typeMatch = m.text.match(/Type: (.+)/);
+          const sitMatch = m.text.match(/Situation: (.+)/);
+          const helperMatch = m.text.match(/Requested helper: (.+)/);
+          return {
+            id: m.id,
+            type: typeMatch ? typeMatch[1].trim() : 'Unknown',
+            situation: sitMatch ? sitMatch[1].trim() : m.text,
+            helper: helperMatch ? helperMatch[1].trim() : 'Support',
+            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'Pending',
+            supportUserId: m.recipient_id,
+            sentAt: m.created_at,
+          };
+        });
+        setChildSentRequests(mapped);
+      }
+    } catch (e) {
+      console.error('[Child] Exception fetching sent requests:', e);
     }
   };
 
@@ -842,7 +881,13 @@ export default function App() {
             }
             
             // Fetch profiles
-            await refreshProfiles(parsedUser.id);
+            const loadedProfiles = await refreshProfiles(parsedUser.id);
+
+            // If child user, load their previously sent support requests + any replies received
+            if (!(parsedUser.role || '').toLowerCase().includes('support')) {
+              await fetchChildSentRequests(parsedUser.id, loadedProfiles || []);
+              await fetchSupportMessages(parsedUser.id); // load replies from support users
+            }
 
             // Subscribe to messages
             const subscription = subscribeToRealtimeMessages(parsedUser.id, (newMsg) => {
@@ -2086,32 +2131,93 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* Section 5: Pending Messages */}
-          {pendingSupportRequests.length > 0 && (
+          {/* Section 5: Pending Messages + Responses */}
+          {(pendingSupportRequests.length > 0 || childSentRequests.length > 0) && (
             <View style={{ marginTop: 28 }}>
               <Text style={[styles.supportLabel, { marginBottom: 12 }]}>Your pending messages</Text>
-              {pendingSupportRequests.slice().reverse().map(req => (
-                <View key={req.id} style={{
-                  backgroundColor: '#F8FAFF',
-                  borderWidth: 1.5,
-                  borderColor: '#BFDBFE',
-                  borderRadius: 14,
-                  padding: 14,
-                  marginBottom: 10,
-                }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB' }}>{req.type}</Text>
-                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>{req.time}</Text>
-                  </View>
-                  <Text style={{ fontSize: 13, color: '#1E293B', marginBottom: 6 }} numberOfLines={2}>{req.situation}</Text>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 12, color: '#64748B' }}>Sent to: <Text style={{ fontWeight: '700' }}>{req.helper}</Text></Text>
-                    <View style={{ backgroundColor: '#FEF9C3', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 }}>
-                      <Text style={{ fontSize: 11, color: '#CA8A04', fontWeight: '700' }}>⏳ {req.status}</Text>
+
+              {/* Child's locally-tracked requests (just submitted this session) */}
+              {pendingSupportRequests.slice().reverse().map(req => {
+                // Look for replies from the support user in messages state
+                const replies = req.supportUserId
+                  ? (messages[req.supportUserId] || []).filter(m => m.sender === 'contact')
+                  : [];
+                const hasReply = replies.length > 0;
+                return (
+                  <View key={req.id} style={{
+                    backgroundColor: '#F8FAFF',
+                    borderWidth: 1.5,
+                    borderColor: hasReply ? '#6EE7B7' : '#BFDBFE',
+                    borderRadius: 14,
+                    padding: 14,
+                    marginBottom: 12,
+                  }}>
+                    {/* Original request */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB' }}>{req.type}</Text>
+                      <Text style={{ fontSize: 11, color: '#94A3B8' }}>{req.time}</Text>
                     </View>
+                    <Text style={{ fontSize: 13, color: '#1E293B', marginBottom: 6 }} numberOfLines={3}>{req.situation}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasReply ? 12 : 0 }}>
+                      <Text style={{ fontSize: 12, color: '#64748B' }}>Sent to: <Text style={{ fontWeight: '700' }}>{req.helper}</Text></Text>
+                      <View style={{ backgroundColor: hasReply ? '#D1FAE5' : '#FEF9C3', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 11, color: hasReply ? '#059669' : '#CA8A04', fontWeight: '700' }}>{hasReply ? '✅ Responded' : '⏳ Pending'}</Text>
+                      </View>
+                    </View>
+                    {/* Replies from support */}
+                    {hasReply && (
+                      <View style={{ borderTopWidth: 1, borderTopColor: '#D1FAE5', paddingTop: 10 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginBottom: 6 }}>💬 Response from support:</Text>
+                        {replies.map((r, i) => (
+                          <View key={i} style={{ backgroundColor: '#ECFDF5', borderRadius: 10, padding: 10, marginBottom: 4 }}>
+                            <Text style={{ fontSize: 13, color: '#1E293B' }}>{r.text}</Text>
+                            <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>{r.time}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
                   </View>
-                </View>
-              ))}
+                );
+              })}
+
+              {/* Historic requests fetched from Supabase */}
+              {childSentRequests.map(req => {
+                const replies = (messages[req.supportUserId] || []).filter(m => m.sender === 'contact');
+                const hasReply = replies.length > 0;
+                return (
+                  <View key={req.id} style={{
+                    backgroundColor: '#F8FAFF',
+                    borderWidth: 1.5,
+                    borderColor: hasReply ? '#6EE7B7' : '#BFDBFE',
+                    borderRadius: 14,
+                    padding: 14,
+                    marginBottom: 12,
+                  }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB' }}>{req.type}</Text>
+                      <Text style={{ fontSize: 11, color: '#94A3B8' }}>{req.time}</Text>
+                    </View>
+                    <Text style={{ fontSize: 13, color: '#1E293B', marginBottom: 6 }} numberOfLines={3}>{req.situation}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasReply ? 12 : 0 }}>
+                      <Text style={{ fontSize: 12, color: '#64748B' }}>Sent to: <Text style={{ fontWeight: '700' }}>{req.helper}</Text></Text>
+                      <View style={{ backgroundColor: hasReply ? '#D1FAE5' : '#FEF9C3', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 11, color: hasReply ? '#059669' : '#CA8A04', fontWeight: '700' }}>{hasReply ? '✅ Responded' : '⏳ Pending'}</Text>
+                      </View>
+                    </View>
+                    {hasReply && (
+                      <View style={{ borderTopWidth: 1, borderTopColor: '#D1FAE5', paddingTop: 10 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginBottom: 6 }}>💬 Response from support:</Text>
+                        {replies.map((r, i) => (
+                          <View key={i} style={{ backgroundColor: '#ECFDF5', borderRadius: 10, padding: 10, marginBottom: 4 }}>
+                            <Text style={{ fontSize: 13, color: '#1E293B' }}>{r.text}</Text>
+                            <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>{r.time}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           )}
         </ScrollView>
