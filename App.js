@@ -1609,7 +1609,7 @@ export default function App() {
           </View>
 
           {/* Section 2: Texting Situation */}
-          <Text style={styles.supportLabel}>Texting Situation</Text>
+          <Text style={styles.supportLabel}>Situation</Text>
           <TextInput
             style={styles.situationInput}
             placeholder="Tell us what's happening or what was said..."
