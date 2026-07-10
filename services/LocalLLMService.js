@@ -139,3 +139,15 @@ Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
 
   return result ? result.trim().replace(/^["']|["']$/g, '') : null;
 };
+
+// 5. Generate safety advice/coaching tips for support workers
+export const generateSupportAdvice = async (situation, textingType) => {
+  const prompt = `You are a child safety and mental health coach helper. A child submitted a support request because they encountered an issue online/texting.
+Child's situation: "${situation}"
+Context/Type: "${textingType}"
+Provide 1 to 2 sentences of professional, actionable advice for a support worker/counselor on how to best respond to and help this child. Do not address the child directly. Address the support worker. Keep it under 40 words.`;
+
+  const result = await callOllama('gemma:2b', prompt);
+  return result ? result.trim().replace(/^["']|["']$/g, '') : "Listen actively, validate their feelings, and help them set a kind but firm boundary.";
+};
+

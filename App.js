@@ -37,7 +37,8 @@ import {
   generatePoliteResponse, 
   generateContactReply, 
   generatePoliteSuggestionsList, 
-  generateSimulatedMessage 
+  generateSimulatedMessage,
+  generateSupportAdvice
 } from './services/LocalLLMService';
 
 import { 
@@ -459,6 +460,8 @@ const RenderAvatar = ({ name, avatar, style }) => {
 export default function App() {
   const [profiles, setProfiles] = useState(initialProfilesData.map(p => ({ ...p, is_simulated: true })));
   const [messages, setMessages] = useState(initialMessagesData);
+  const [supportAdvices, setSupportAdvices] = useState({});
+  const [supportReplies, setSupportReplies] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
 
   // Active User session states
@@ -634,6 +637,189 @@ export default function App() {
     activeCallRef.current = activeCall;
   }, [activeCall]);
 
+  const refreshProfiles = async (currentUserId) => {
+    if (!supabase || !currentUserId) return;
+    try {
+      const dbProfiles = await fetchProfiles();
+      if (dbProfiles.length > 0) {
+        const filteredDbProfiles = dbProfiles
+          .filter(p => p.id !== currentUserId)
+          .map(p => ({
+            id: p.id,
+            name: p.name,
+            role: p.role,
+            avatar: p.avatar_url || '',
+            status: 'online',
+            statusText: p.bio || 'Active',
+            time: 'Just Now',
+            unread: 0,
+            email: p.email,
+            phone: p.phone,
+            bio: p.bio,
+            lastUpdated: new Date(p.last_updated).getTime(),
+            is_simulated: false
+          }));
+
+        setProfiles(prev => {
+          const simulated = prev.filter(p => p.is_simulated);
+          const merged = [...simulated];
+          const dbMap = new Map(filteredDbProfiles.map(p => [p.id, p]));
+          
+          const processedIds = new Set();
+          for (const p of prev) {
+            if (p.is_simulated) continue;
+            const updated = dbMap.get(p.id);
+            if (updated) {
+              merged.push({ ...p, ...updated });
+              processedIds.add(p.id);
+            } else {
+              merged.push(p);
+            }
+          }
+          
+          for (const dp of filteredDbProfiles) {
+            if (!processedIds.has(dp.id)) {
+              merged.push(dp);
+            }
+          }
+          return merged;
+        });
+      }
+    } catch (e) {
+      console.error('[Profiles] Error refreshing profiles:', e);
+    }
+  };
+
+  const fetchSupportMessages = async (userId) => {
+    if (!supabase || !userId) return;
+    try {
+      const { data: dbMessages, error: errMsgs } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('recipient_id', userId)
+        .order('created_at', { ascending: true });
+
+      if (errMsgs) {
+        console.error('[Support] Error fetching historical support messages:', errMsgs.message);
+        return;
+      }
+
+      if (dbMessages) {
+        const loadedMessages = {};
+        for (const m of dbMessages) {
+          const senderId = m.sender_id;
+          const now = new Date(m.created_at);
+          const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const mappedMsg = {
+            id: m.id,
+            text: m.text,
+            sender: 'contact',
+            time: timeStr,
+            image: m.image_url || null,
+            sender_id: m.sender_id
+          };
+          if (!loadedMessages[senderId]) {
+            loadedMessages[senderId] = [];
+          }
+          loadedMessages[senderId].push(mappedMsg);
+        }
+        setMessages(prev => ({
+          ...prev,
+          ...loadedMessages
+        }));
+      }
+    } catch (e) {
+      console.error('[Support] Exception fetching support messages:', e);
+    }
+  };
+
+  const handleSendSupportReply = async (msg) => {
+    const replyText = supportReplies[msg.id];
+    if (!replyText || !replyText.trim()) {
+      Alert.alert("Tip", "Please type a reply first!");
+      return;
+    }
+
+    if (supabase && currentUser) {
+      try {
+        const sent = await sendSupabaseMessage(currentUser.id, msg.sender_id, replyText);
+        if (sent) {
+          Alert.alert("Reply Sent", `Your reply has been sent successfully.`);
+          setSupportReplies(prev => ({ ...prev, [msg.id]: '' }));
+          
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const localMappedMsg = {
+            id: sent.id,
+            text: replyText,
+            sender: 'user',
+            time: timeStr,
+            image: null
+          };
+          setMessages(prev => ({
+            ...prev,
+            [msg.sender_id]: [...(prev[msg.sender_id] || []), localMappedMsg]
+          }));
+        } else {
+          Alert.alert("Error", "Could not send the reply. Please check connection.");
+        }
+      } catch (err) {
+        console.error('[Support] Error sending reply:', err);
+        Alert.alert("Error", "Could not send the reply.");
+      }
+    } else {
+      Alert.alert("Demo Mode", `Your reply: "${replyText}" (Supabase not initialized)`);
+    }
+  };
+
+  // Effect to fetch AI advice for support requests
+  useEffect(() => {
+    if (!currentUser || !(currentUser.role || '').toLowerCase().includes('support')) return;
+    
+    const allMessages = Object.values(messages).flat();
+    const supportRequests = allMessages.filter(m => m.sender === 'contact' && m.text && m.text.includes('[Support Request]'));
+    
+    const fetchAdvices = async () => {
+      let updated = false;
+      const newAdvices = { ...supportAdvices };
+      
+      for (const req of supportRequests) {
+        if (!newAdvices[req.id]) {
+          const helperMatch = (req.text || '').match(/Requested helper:\s*(.*)/);
+          const helperText = helperMatch ? helperMatch[1].trim() : '';
+          
+          if (!helperText.toLowerCase().includes('navi')) {
+            newAdvices[req.id] = 'N/A';
+            updated = true;
+            continue;
+          }
+
+          const situationMatch = (req.text || '').match(/Situation:\s*(.*)/);
+          const typeMatch = (req.text || '').match(/Type:\s*(.*)/);
+          const situation = situationMatch ? situationMatch[1].trim() : req.text;
+          const typeVal = typeMatch ? typeMatch[1].trim() : 'General';
+          
+          newAdvices[req.id] = 'Loading advice...';
+          setSupportAdvices({ ...newAdvices });
+          
+          try {
+            const adviceText = await generateSupportAdvice(situation, typeVal);
+            newAdvices[req.id] = adviceText;
+            updated = true;
+          } catch (e) {
+            console.error('Error generating advice:', e);
+            newAdvices[req.id] = 'Validate their feelings and guide them to set healthy communication boundaries.';
+            updated = true;
+          }
+        }
+      }
+      if (updated) {
+        setSupportAdvices(newAdvices);
+      }
+    };
+    
+    fetchAdvices();
+  }, [messages, currentUser]);
+
   useEffect(() => {
     const loadUserAndInitSupabase = async () => {
       try {
@@ -649,39 +835,13 @@ export default function App() {
             console.log('[Supabase] Connecting with user:', parsedUser.name);
             await upsertProfile(parsedUser);
             
-            // Fetch profiles
-            const dbProfiles = await fetchProfiles();
-            if (dbProfiles.length > 0) {
-              const filteredDbProfiles = dbProfiles
-                .filter(p => p.id !== parsedUser.id) // Exclude current user
-                .map(p => ({
-                  id: p.id,
-                  name: p.name,
-                  role: p.role,
-                  avatar: p.avatar_url || '',
-                  status: 'online',
-                  statusText: p.bio || 'Active',
-                  time: 'Just Now',
-                  unread: 0,
-                  email: p.email,
-                  phone: p.phone,
-                  bio: p.bio,
-                  lastUpdated: new Date(p.last_updated).getTime(),
-                  is_simulated: false
-                }));
-
-              setProfiles(prev => {
-                const existingIds = new Set(prev.map(p => p.id));
-                const newProfiles = [...prev];
-                for (const dp of filteredDbProfiles) {
-                  if (!existingIds.has(dp.id)) {
-                    newProfiles.push(dp);
-                    existingIds.add(dp.id);
-                  }
-                }
-                return newProfiles;
-              });
+            // If support user, load historical messages sent to support
+            if ((parsedUser.role || '').toLowerCase().includes('support')) {
+              await fetchSupportMessages(parsedUser.id);
             }
+            
+            // Fetch profiles
+            await refreshProfiles(parsedUser.id);
 
             // Subscribe to messages
             const subscription = subscribeToRealtimeMessages(parsedUser.id, (newMsg) => {
@@ -1100,7 +1260,14 @@ export default function App() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchRealDashboardData();
+    if (currentUser) {
+      if ((currentUser.role || '').toLowerCase().includes('support')) {
+        await refreshProfiles(currentUser.id);
+        await fetchSupportMessages(currentUser.id);
+      } else {
+        await fetchRealDashboardData();
+      }
+    }
     setRefreshing(false);
   };
 
@@ -1324,36 +1491,129 @@ export default function App() {
           </View>
         </View>
 
-        <ScrollView style={styles.scrollList} contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          style={styles.scrollList} 
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
           {supportRequests.length > 0 ? (
             supportRequests.map((msg, idx) => {
               // Parse sender name from profiles
               const senderProfile = profiles.find(p => p.id === msg.sender_id);
               const senderName = senderProfile ? senderProfile.name : 'A Kid';
-              // Parse lines from message body
-              const lines = (msg.text || '').split('\n').filter(l => l && !l.includes('[Support Request]'));
+              
+              // Extract fields from text
+              const textContent = msg.text || '';
+              const typeMatch = textContent.match(/Type:\s*(.*)/);
+              const situationMatch = textContent.match(/Situation:\s*(.*)/);
+              const helperMatch = textContent.match(/Requested helper:\s*(.*)/);
+
+              const typeText = typeMatch ? typeMatch[1].trim() : 'General';
+              const situationText = situationMatch ? situationMatch[1].trim() : textContent;
+              const helperText = helperMatch ? helperMatch[1].trim() : 'Support';
+              
+              const advice = supportAdvices[msg.id] || 'Loading advice...';
+              const replyDraft = supportReplies[msg.id] || '';
+
               return (
                 <View key={idx} style={{
                   backgroundColor: '#FFFFFF',
                   borderRadius: 16,
                   padding: 16,
-                  marginBottom: 12,
+                  marginBottom: 16,
                   borderWidth: 1,
                   borderColor: '#EF4444',
                   shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.06,
-                  shadowRadius: 4,
-                  elevation: 2,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 6,
+                  elevation: 3,
                 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                    <Text style={{ fontSize: 20, marginRight: 8 }}>🆘</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#B91C1C', flex: 1 }}>{senderName}</Text>
+                  {/* Header Row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 22, marginRight: 8 }}>🆘</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#B91C1C' }}>{senderName}</Text>
+                      <Text style={{ fontSize: 11, color: '#94A3B8' }}>Requested Helper: {helperText}</Text>
+                    </View>
                     <Text style={{ fontSize: 11, color: '#94A3B8' }}>{msg.time}</Text>
                   </View>
-                  {lines.map((line, li) => (
-                    <Text key={li} style={{ fontSize: 13, color: '#475569', marginBottom: 3 }}>{line}</Text>
-                  ))}
+
+                  {/* Message / Situation */}
+                  <View style={{ backgroundColor: '#F8FAFC', padding: 12, borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>
+                      Message from Child
+                    </Text>
+                    <Text style={{ fontSize: 14, color: '#1E293B', fontWeight: '500' }}>
+                      "{situationText}"
+                    </Text>
+                  </View>
+
+                  {/* Context / Type */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748B', marginRight: 6 }}>
+                      Type/Context:
+                    </Text>
+                    <View style={{ backgroundColor: '#EEF2F6', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                      <Text style={{ fontSize: 12, color: '#334155', fontWeight: '600' }}>{typeText}</Text>
+                    </View>
+                  </View>
+
+                  {/* AI Advice Section */}
+                  {helperText.toLowerCase().includes('navi') && (
+                    <View style={{ backgroundColor: '#ECFDF5', padding: 12, borderRadius: 10, marginBottom: 16, borderWidth: 1, borderColor: '#D1FAE5' }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#065F46', textTransform: 'uppercase', marginBottom: 4 }}>
+                        💡 Navi's Advice
+                      </Text>
+                      <Text style={{ fontSize: 13, color: '#047857', fontStyle: 'italic' }}>
+                        {advice}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Reply Action Form */}
+                  <View style={{ borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 12 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#475569', marginBottom: 6 }}>
+                      Send Response to {senderName}:
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <TextInput
+                        style={{
+                          flex: 1,
+                          backgroundColor: '#F8FAFC',
+                          borderWidth: 1,
+                          borderColor: '#CBD5E1',
+                          borderRadius: 8,
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          fontSize: 13,
+                          color: '#1E293B',
+                          marginRight: 8,
+                          maxHeight: 80,
+                        }}
+                        placeholder={`Type a helpful response...`}
+                        placeholderTextColor="#94A3B8"
+                        multiline
+                        value={replyDraft}
+                        onChangeText={val => setSupportReplies(prev => ({ ...prev, [msg.id]: val }))}
+                      />
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#EF4444',
+                          borderRadius: 8,
+                          paddingHorizontal: 14,
+                          paddingVertical: 10,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        onPress={() => handleSendSupportReply(msg)}
+                      >
+                        <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>Send</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
               );
             })
@@ -1746,7 +2006,25 @@ export default function App() {
               onPress={() => setSelectedSupportType('Navi')}
               activeOpacity={0.7}
             >
-              <Text style={{ fontSize: 24, marginBottom: 4 }}>🤖</Text>
+              <View style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                overflow: 'hidden',
+                marginBottom: 2,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+                <Image 
+                  source={require('./assets/navi_thumbs_up.png')} 
+                  style={{
+                    width: 64,
+                    height: 64,
+                    resizeMode: 'contain',
+                    marginTop: 15,
+                  }}
+                />
+              </View>
               <Text style={[
                 styles.helperChoiceText,
                 selectedSupportType === 'Navi' && styles.helperChoiceTextSelected
