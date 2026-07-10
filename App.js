@@ -2007,8 +2007,8 @@ export default function App() {
               activeOpacity={0.7}
             >
               <View style={{
-                width: 48,
-                height: 36,
+                width: 60,
+                height: 50,
                 overflow: 'hidden',
                 marginBottom: 2,
                 justifyContent: 'center',
@@ -2017,8 +2017,8 @@ export default function App() {
                 <Image 
                   source={require('./assets/navi_thumbs_up.png')} 
                   style={{
-                    width: 72,
-                    height: 72,
+                    width: 80,
+                    height: 80,
                     resizeMode: 'contain',
                     marginTop: 0,
                   }}
@@ -2040,7 +2040,15 @@ export default function App() {
               onPress={() => setSelectedSupportType('Therapist')}
               activeOpacity={0.7}
             >
-              <Text style={{ fontSize: 24, marginBottom: 4 }}>🩺</Text>
+              <View style={{
+                width: 60,
+                height: 50,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 2,
+              }}>
+                <Text style={{ fontSize: 32 }}>🩺</Text>
+              </View>
               <Text style={[
                 styles.helperChoiceText,
                 selectedSupportType === 'Therapist' && styles.helperChoiceTextSelected
@@ -7552,7 +7560,7 @@ const styles = StyleSheet.create({
   },
   helperChoiceBox: {
     flex: 1,
-    height: 72,
+    height: 96,
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
