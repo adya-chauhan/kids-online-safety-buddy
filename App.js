@@ -2021,7 +2021,7 @@ export default function App() {
 
         <ScrollView 
           style={{ flex: 1 }} 
-          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
         >
           {/* Section 1: Texting Type */}
