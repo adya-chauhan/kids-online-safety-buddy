@@ -2453,6 +2453,65 @@ export default function App() {
     Alert.alert("Success", "Profile updated successfully!");
   };
 
+  const pickProfileImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        "Permission Denied",
+        "We need media library permission to let you select a profile picture!",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const base64Uri = `data:image/jpeg;base64,${asset.base64}`;
+        setEditAvatar(base64Uri);
+      }
+    } catch (e) {
+      console.log("Profile image picking error:", e);
+      Alert.alert("Error", "Could not load image from your gallery.");
+    }
+  };
+
+  const takeProfilePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        "Permission Denied",
+        "We need camera permission to let you take a profile picture!",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const base64Uri = `data:image/jpeg;base64,${asset.base64}`;
+        setEditAvatar(base64Uri);
+      }
+    } catch (e) {
+      console.log("Profile camera error:", e);
+      Alert.alert("Error", "Could not capture photo.");
+    }
+  };
+
   const renderEditProfileScreen = () => {
     const presetAvatars = [
       { name: 'Puppy', url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=150' },
@@ -2478,12 +2537,43 @@ export default function App() {
         <ScrollView style={styles.scrollList} contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 }]}>
           {/* Avatar Preview */}
           <View style={{ alignItems: 'center', marginVertical: 20 }}>
-            <RenderAvatar 
-              name={editName || 'User'} 
-              avatar={editAvatar} 
-              style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#3B82F6' }} 
-            />
-            <Text style={{ marginTop: 8, fontSize: 14, color: '#64748B' }}>Choose an avatar below or enter a URL</Text>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              onPress={() => {
+                Alert.alert(
+                  "Change Profile Picture",
+                  "Choose an option:",
+                  [
+                    { text: "📸 Pick from Gallery", onPress: pickProfileImage },
+                    { text: "📷 Take Photo", onPress: takeProfilePhoto },
+                    { text: "Cancel", style: "cancel" }
+                  ]
+                );
+              }}
+              style={{ position: 'relative' }}
+            >
+              <RenderAvatar 
+                name={editName || 'User'} 
+                avatar={editAvatar} 
+                style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#3B82F6' }} 
+              />
+              <View style={{
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                backgroundColor: '#2563EB',
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: 2,
+                borderColor: '#FFFFFF'
+              }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>📷</Text>
+              </View>
+            </TouchableOpacity>
+            <Text style={{ marginTop: 10, fontSize: 14, color: '#64748B', fontWeight: '600' }}>Tap image to change photo</Text>
           </View>
 
           {/* Preset Avatars */}
