@@ -2008,7 +2008,7 @@ export default function App() {
             >
               <View style={{
                 width: 60,
-                height: 50,
+                height: 42,
                 overflow: 'hidden',
                 marginTop: 6,
                 marginBottom: 2,
@@ -2018,8 +2018,8 @@ export default function App() {
                 <Image 
                   source={require('./assets/navi_thumbs_up.png')} 
                   style={{
-                    width: 80,
-                    height: 80,
+                    width: 60,
+                    height: 67,
                     resizeMode: 'contain',
                     marginTop: 0,
                   }}
