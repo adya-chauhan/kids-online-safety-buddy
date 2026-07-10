@@ -2018,10 +2018,10 @@ export default function App() {
                 <Image 
                   source={require('./assets/navi_thumbs_up.png')} 
                   style={{
-                    width: 60,
-                    height: 67,
+                    width: 68,
+                    height: 76,
                     resizeMode: 'contain',
-                    marginTop: 0,
+                    marginTop: -14,
                   }}
                 />
               </View>
