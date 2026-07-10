@@ -2592,7 +2592,7 @@ export default function App() {
   const sendMockImagePrompt = () => {
     Alert.alert(
       "Send Image Message",
-      "Choose an action to test Navi's Image Safety detector:",
+      "Choose how to send an image:",
       [
         {
           text: "📸 Pick from Gallery",
@@ -2601,20 +2601,6 @@ export default function App() {
         {
           text: "📷 Take Photo",
           onPress: takePhotoAction
-        },
-        {
-          text: "🐶 Safe Image (Mock)",
-          onPress: () => sendMockImageMessage(
-            "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400",
-            "Look at this cute puppy!"
-          )
-        },
-        {
-          text: "😡 Mean Image (Mock)",
-          onPress: () => sendMockImageMessage(
-            "https://raw.githubusercontent.com/adya-chauhan/kids-online-safety-buddy/main/assets/mean_meme_test.png",
-            "This meme is so funny! You look exactly like this ugly jerk! 😂"
-          )
         },
         {
           text: "Cancel",
