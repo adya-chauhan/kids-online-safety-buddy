@@ -516,6 +516,7 @@ export default function App() {
   const [selectedTextingType, setSelectedTextingType] = useState(null);
   const [situationText, setSituationText] = useState('');
   const [selectedSupportType, setSelectedSupportType] = useState(null);
+  const [pendingSupportRequests, setPendingSupportRequests] = useState([]);
 
   // Interception states for safety reviews
   const [pendingImage, setPendingImage] = useState(null); // { uri, text }
@@ -1924,6 +1925,20 @@ export default function App() {
       }
     }
 
+    // Save request to pending list
+    const textingTypesLabels2 = { 1: "Friend 💬", 2: "Family 🏠", 3: "Group 👥", 4: "Other 🌐" };
+    setPendingSupportRequests(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        type: textingTypesLabels2[selectedTextingType] || "Other 🌐",
+        situation: situationText,
+        helper: selectedSupportType,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'Pending',
+      }
+    ]);
+
     Alert.alert(
       "Support Requested",
       messageSent 
@@ -2070,6 +2085,35 @@ export default function App() {
               <Text style={styles.checkmarkIconText}>✓</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Section 5: Pending Messages */}
+          {pendingSupportRequests.length > 0 && (
+            <View style={{ marginTop: 28 }}>
+              <Text style={[styles.supportLabel, { marginBottom: 12 }]}>Your pending messages</Text>
+              {pendingSupportRequests.slice().reverse().map(req => (
+                <View key={req.id} style={{
+                  backgroundColor: '#F8FAFF',
+                  borderWidth: 1.5,
+                  borderColor: '#BFDBFE',
+                  borderRadius: 14,
+                  padding: 14,
+                  marginBottom: 10,
+                }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB' }}>{req.type}</Text>
+                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>{req.time}</Text>
+                  </View>
+                  <Text style={{ fontSize: 13, color: '#1E293B', marginBottom: 6 }} numberOfLines={2}>{req.situation}</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 12, color: '#64748B' }}>Sent to: <Text style={{ fontWeight: '700' }}>{req.helper}</Text></Text>
+                    <View style={{ backgroundColor: '#FEF9C3', borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 }}>
+                      <Text style={{ fontSize: 11, color: '#CA8A04', fontWeight: '700' }}>⏳ {req.status}</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </ScrollView>
       </View>
     );
@@ -3124,10 +3168,14 @@ export default function App() {
 
   // Filter profiles based on search and sort by lastUpdated (newest first!)
   const filteredProfiles = profiles
-    .filter(profile => 
-      profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      profile.role.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    .filter(profile => {
+      const role = (profile.role || '').toLowerCase();
+      if (role.includes('support')) return false; // hide support users from chat
+      return (
+        profile.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        profile.role.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    })
     .sort((a, b) => (b.lastUpdated || 0) - (a.lastUpdated || 0));
 
   // Clear unread count when opening a chat
