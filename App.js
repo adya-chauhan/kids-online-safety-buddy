@@ -2021,7 +2021,7 @@ export default function App() {
                     width: 68,
                     height: 76,
                     resizeMode: 'contain',
-                    marginTop: -14,
+                    marginTop: 12,
                   }}
                 />
               </View>
