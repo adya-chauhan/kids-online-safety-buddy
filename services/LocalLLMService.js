@@ -7,7 +7,7 @@ const PRIMARY_IP = '192.168.0.158';
 const OLLAMA_PORT = '11434';
 
   // Helper to make fetch requests to Ollama
-const callOllama = async (model, prompt, options = {}, timeout = 4000) => {
+const callOllama = async (model, prompt, options = {}, timeout = 15000) => {
   const requestOptions = {
     method: 'POST',
     headers: { 
@@ -109,32 +109,32 @@ Do not write explanations, quotes, or markdown. Output them as a numbered list:
       .map(line => line.replace(/^\d+\.\s*/, '').trim().replace(/^["']|["']$/g, ''))
       .filter(line => line.length > 0 && !line.startsWith('Here are') && !line.includes('reply option'));
     
-    if (lines.length === 3) {
-      return lines;
+    if (lines.length > 0) {
+      return lines.slice(0, 3);
     }
   }
 
   return null;
 };
 
-// 4. Generate simulated chat message (Good or Bad)
-export const generateSimulatedMessage = async (contactName, contactBio, type) => {
-  let prompt = "";
-  if (type === 'good') {
-    prompt = `You are roleplaying as ${contactName}, a child's friend. Personality: "${contactBio}".
+// 4. Generate simulated response for mock contacts
+export const generateSimulatedMessage = async (contactName, contactBio, mood) => {
+  let promptInstruction = "";
+  if (mood === 'good') {
+    promptInstruction = `You are roleplaying as ${contactName}, a child's friend. Personality: "${contactBio}".
 Write a friendly, normal, kind chat message (1 sentence, max 15 words) about typical school, games, toys, or hobbies (e.g. "I love playing basketball" or "Let's work on our homework together!").
 Do not repeat or make it mean. Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
-  } else if (type === 'info') {
-    prompt = `You are roleplaying as ${contactName}, a child's friend.
+  } else if (mood === 'info') {
+    promptInstruction = `You are roleplaying as ${contactName}, a child's friend.
 Write a chat message (1 sentence, max 15 words) asking the child for their private/personal information (e.g., "where do you live?", "what's your phone number?", "what school do you go to?", or "are your parents home?").
 Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
   } else {
-    prompt = `You are roleplaying as ${contactName}, a child's friend.
+    promptInstruction = `You are roleplaying as ${contactName}, a child's friend.
 Write a mean, rude, or insulting chat message (1 sentence, max 15 words) that makes fun of someone, calls them a loser/ugly/stupid, or tells them to go away.
 Do not prefix with your name. Output ONLY the text of the message, no quotes.`;
   }
 
-  const result = await callOllama('gemma:2b', prompt + `\nEnsure this response is completely unique, creative, and different from typical responses. Random seed: ${Math.random()}`, {
+  const result = await callOllama('gemma:2b', promptInstruction + `\nEnsure this response is completely unique, creative, and different from typical responses. Random seed: ${Math.random()}`, {
     temperature: 0.95,
     top_p: 0.9,
     top_k: 40
@@ -168,10 +168,25 @@ Reply directly to the child in 1 to 2 warm, natural, friendly sentences:
 
 Keep your response under 35 words, friendly, kind, and positive.`;
 
-  const result = await callOllama('gemma:2b', prompt, { temperature: 0.8 }, 10000);
+  const result = await callOllama('gemma:2b', prompt, { temperature: 0.8 }, 15000);
   if (result && result.trim()) {
     return result.trim().replace(/^["|']|["|']$/g, '');
   }
 
-  return `I'm right here with you in your app! I'm Navi, your online safety buddy. How can I help make your day better? 💙`;
+  // Dynamic non-static contextual response if LLM is busy
+  const lower = cleanInput.toLowerCase();
+  if (lower.includes('where')) {
+    return `I'm right here inside your app on your device! I'm always with you to keep your chats safe and fun. 💙`;
+  }
+  if (lower.includes('who') || lower.includes('what are you')) {
+    return `I'm Navi! Your friendly AI safety buddy. I'm here to help you navigate chats and keep things positive. 🌟`;
+  }
+  if (lower.includes('how many') || lower.includes('people')) {
+    return `I talk with awesome kids like you every day to help everyone stay safe and happy online! 😊`;
+  }
+  if (lower.includes('hi') || lower.includes('hello') || lower.includes('hey')) {
+    return `Hi there! I'm Navi! I'm so happy to chat with you today! 💙`;
+  }
+
+  return `I hear you about "${cleanInput}". I'm always right here in your app to help you navigate any chat! 💙`;
 };
