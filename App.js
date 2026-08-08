@@ -540,16 +540,12 @@ export default function App() {
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
   // Parental Insights Dashboard states
-  const [naviPopupCount, setNaviPopupCount] = useState(3);
-  const [toxicReceivedCount, setToxicReceivedCount] = useState(2);
-  const [naviBypassCount, setNaviBypassCount] = useState(1);
-  const [naviListenCount, setNaviListenCount] = useState(2);
-  const [naviAlertAdultCount, setNaviAlertAdultCount] = useState(1);
-  const [safetyAlertsLog, setSafetyAlertsLog] = useState([
-    { id: '1', time: 'Yesterday, 3:45 PM', type: 'Sent Message Intercepted', contact: 'Sara', action: 'Bypassed' },
-    { id: '2', time: 'Yesterday, 3:46 PM', type: 'Received Message Flagged', contact: 'Sara', action: 'Alerted' },
-    { id: '3', time: '2 days ago, 1:12 PM', type: 'Sent Message Intercepted', contact: 'Anvi', action: 'Listened' }
-  ]);
+  const [naviPopupCount, setNaviPopupCount] = useState(0);
+  const [toxicReceivedCount, setToxicReceivedCount] = useState(0);
+  const [naviBypassCount, setNaviBypassCount] = useState(0);
+  const [naviListenCount, setNaviListenCount] = useState(0);
+  const [naviAlertAdultCount, setNaviAlertAdultCount] = useState(0);
+  const [safetyAlertsLog, setSafetyAlertsLog] = useState([]);
   const [naviMascotImageState, setNaviMascotImageState] = useState('serious');
   const [naviFeedbackMessage, setNaviFeedbackMessage] = useState(null);
   const naviMascotAnim = useRef(new Animated.Value(0)).current;
@@ -1764,6 +1760,24 @@ export default function App() {
             />
           }
         >
+          {totalViolations === 0 && totalInterventions === 0 && safetyAlertsLog.length === 0 && (
+            <View style={{
+              backgroundColor: '#EFF6FF',
+              borderWidth: 1.5,
+              borderColor: '#93C5FD',
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 16,
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                <Text style={{ fontSize: 18, marginRight: 8 }}>🛡️</Text>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#1E40AF' }}>Awaiting Child Connection</Text>
+              </View>
+              <Text style={{ fontSize: 13, color: '#1E3A8A', lineHeight: 19 }}>
+                No safety alerts logged yet for this account. Once your child adds your phone number (<Text style={{ fontWeight: '700' }}>{currentUser?.phone || 'your phone number'}</Text>) as their <Text style={{ fontWeight: '700' }}>Trusted Adult</Text> in their Navi Settings, intervention statistics and weekly logs will appear here.
+              </Text>
+            </View>
+          )}
           {/* Safety Rating Overview Card */}
           <View style={styles.safetyOverviewCard}>
             <View style={styles.safetyScoreWrapper}>
