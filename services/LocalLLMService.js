@@ -19,38 +19,35 @@ const callOllama = async (model, prompt, options = {}, timeout = 25000) => {
     })
   };
 
-  // Try Primary IP first
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(`http://${PRIMARY_IP}:${OLLAMA_PORT}/api/generate`, {
-      ...requestOptions,
-      signal: controller.signal
-    });
-    clearTimeout(id);
-    if (response.ok) {
-      const json = await response.json();
-      return json.response;
+  const tryEndpoints = [
+    `http://${PRIMARY_IP}:${OLLAMA_PORT}/api/generate`,
+    `http://localhost:${OLLAMA_PORT}/api/generate`,
+    `http://127.0.0.1:${OLLAMA_PORT}/api/generate`
+  ];
+
+  for (const endpoint of tryEndpoints) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(endpoint, {
+        ...requestOptions,
+        signal: controller.signal
+      });
+      clearTimeout(id);
+      if (response.ok) {
+        const json = await response.json();
+        if (json && json.response) {
+          return json.response;
+        }
+      }
+    } catch (e) {
+      // Continue to next endpoint
     }
-  } catch (e) {
-    console.log(`[LLM] Primary IP connection failed: ${e.message}`);
   }
 
-  // Fallback to localhost (for simulator)
-  const controllerLocal = new AbortController();
-  const idLocal = setTimeout(() => controllerLocal.abort(), timeout - 2000);
-  try {
-    const response = await fetch(`http://localhost:${OLLAMA_PORT}/api/generate`, {
-      ...requestOptions,
-      signal: controllerLocal.signal
-    });
-    clearTimeout(idLocal);
-    if (response.ok) {
-      const json = await response.json();
-      return json.response;
-    }
-  } catch (e) {
-    console.log(`[LLM] Localhost connection failed: ${e.message}`);
+  // If primary model failed, fallback to qwen2.5:1.5b if available
+  if (model !== 'qwen2.5:1.5b') {
+    return callOllama('qwen2.5:1.5b', prompt, options, timeout);
   }
 
   return null;
