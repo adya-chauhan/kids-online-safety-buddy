@@ -154,32 +154,24 @@ Provide 1 to 2 sentences of professional, actionable advice for a support worker
   return result ? result.trim().replace(/^["|']|["|']$/g, '') : "Listen actively, validate their feelings, and help them set a kind but firm boundary.";
 };
 
-// 6. Generate Navi's friendly advice spoken directly to the child
+// 6. Generate Navi's friendly advice / chat response spoken directly to the child
 export const generateNaviChildAdvice = async (situation, textingType) => {
   const cleanInput = (situation || '').trim();
-  const isGreeting = /^(hi|hello|hey|sup|yo|hola|good morning|good evening)\b/i.test(cleanInput);
 
-  let prompt = "";
-  if (isGreeting) {
-    prompt = `You are Navi, a friendly AI safety buddy for kids. A child just said "${cleanInput}" to you.
-Reply with a warm, cheerful, friendly greeting in 1 to 2 short sentences. Be enthusiastic, kind, and welcoming! Do not mention bullying or problems. Keep it under 25 words.`;
-  } else {
-    prompt = `You are Navi, a friendly and caring AI safety buddy for kids. A child told you about an online situation: "${cleanInput}" (Category: ${textingType}).
-Reply directly to the child in 2 warm, supportive sentences specifically addressing what they described.
-Rules:
-- Be unique, natural, and conversational.
-- Do NOT use canned opening phrases like "Hey, I hear you" or "It sounds like".
-- Address their specific problem directly.
-Keep it under 45 words.`;
-  }
+  const prompt = `You are Navi, a friendly, warm, caring AI safety buddy for kids. You live right inside this safety app on the child's device.
+The child sent you this message: "${cleanInput}" (Category: ${textingType}).
 
-  const result = await callOllama('gemma:2b', prompt, { temperature: 0.9 }, 15000);
+Reply directly to the child in 1 to 2 warm, natural, friendly sentences:
+- If the child asks a question about you (e.g. "Where are you?", "Who are you?", "How many people have you talked to?"), answer cheerfully as Navi! (You live in their app as their safety buddy!).
+- If the child shares a problem or mean situation, give 2 supportive sentences helping them feel safe.
+- If the child says hi or makes small talk, give a happy greeting.
+
+Keep your response under 35 words, friendly, kind, and positive.`;
+
+  const result = await callOllama('gemma:2b', prompt, { temperature: 0.8 }, 10000);
   if (result && result.trim()) {
     return result.trim().replace(/^["|']|["|']$/g, '');
   }
 
-  if (isGreeting) {
-    return `Hello there! I'm Navi, your online safety buddy. I'm so happy to chat with you today! 💙`;
-  }
-  return `I hear you about "${cleanInput}". You did the right thing by bringing this up! Remember that I'm always here to help you navigate tricky chats. 💙`;
+  return `I'm right here with you in your app! I'm Navi, your online safety buddy. How can I help make your day better? 💙`;
 };
