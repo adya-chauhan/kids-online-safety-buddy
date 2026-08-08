@@ -6,10 +6,15 @@ Navi is a privacy-first mobile application designed to protect children from cyb
 
 ---
 
-## 📱 Application Preview
+## 📱 Application Interface
 
 <p align="center">
-  <img src="docs/screenshots/app_overview.png" alt="Navi App Mobile Interface" width="850" />
+  <img src="docs/screenshots/insights_dashboard.png" alt="Parental Insights Dashboard" width="750" />
+</p>
+
+<p align="center">
+  <br />
+  <img src="docs/screenshots/kid_support_center.png" alt="Kid Support Center" width="750" />
 </p>
 
 ---
