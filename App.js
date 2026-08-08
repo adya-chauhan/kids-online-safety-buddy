@@ -3009,12 +3009,13 @@ export default function App() {
     setIsGeneratingSuggestions(true);
     setPoliteSuggestions([]);
 
-    const suggestions = await generatePoliteSuggestionsList(rudeMessage);
+    const textToUse = (rudeMessage && rudeMessage.trim()) ? rudeMessage : (interceptedText || "message");
+    const suggestions = await generatePoliteSuggestionsList(textToUse);
     
     setIsGeneratingSuggestions(false);
 
-    if (suggestions && suggestions.length === 3) {
-      setPoliteSuggestions(suggestions);
+    if (suggestions && suggestions.length > 0) {
+      setPoliteSuggestions(suggestions.slice(0, 3));
     } else {
       // Static fallback options if generation fails
       if (safetyCategory === 'IGNORE_PIVOT') {
@@ -3345,9 +3346,9 @@ export default function App() {
     } else if (pendingImage) {
       textToAnalyze = pendingImage.text || "mean photo";
     } else {
-      // Received message case: use the last message in the chat history
-      const activeMessages = messages[activeChat.id] || [];
-      textToAnalyze = activeMessages.length > 0 ? activeMessages[activeMessages.length - 1].text : "";
+      // Received message case: use interceptedText if available, else last message in history
+      const activeMessages = (activeChat && messages[activeChat.id]) ? messages[activeChat.id] : [];
+      textToAnalyze = interceptedText || (activeMessages.length > 0 ? activeMessages[activeMessages.length - 1].text : "");
     }
 
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
