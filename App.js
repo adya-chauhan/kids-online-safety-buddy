@@ -475,6 +475,7 @@ export default function App() {
   const [regPhone, setRegPhone] = useState('');
   const [regRole, setRegRole] = useState('Kid');
   const [regBio, setRegBio] = useState('');
+  const [isAbove18, setIsAbove18] = useState(null);
 
   // Add Contact Modal states (supporting search by phone number!)
   const [addContactModalVisible, setAddContactModalVisible] = useState(false);
@@ -3749,6 +3750,17 @@ export default function App() {
       return;
     }
 
+    if (regRole === 'Support') {
+      if (isAbove18 === null) {
+        Alert.alert("Age Verification", "Please confirm whether you are 18 or above.");
+        return;
+      }
+      if (isAbove18 === false) {
+        Alert.alert("Age Restriction", "Support account registration requires you to be 18 years of age or older.");
+        return;
+      }
+    }
+
     setIsUserLoading(true);
     try {
       if (supabase) {
@@ -4237,6 +4249,51 @@ export default function App() {
                   );
                 })}
               </View>
+
+              {regRole === 'Support' && (
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>
+                    Are you 18 or above? *
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        height: 42,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: isAbove18 === true ? '#22C55E' : '#E2E8F0',
+                        backgroundColor: isAbove18 === true ? '#DCFCE7' : '#FFFFFF',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                      onPress={() => setIsAbove18(true)}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: isAbove18 === true ? '#15803D' : '#475569' }}>
+                        Yes (18+)
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        height: 42,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: isAbove18 === false ? '#EF4444' : '#E2E8F0',
+                        backgroundColor: isAbove18 === false ? '#FEE2E2' : '#FFFFFF',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                      onPress={() => setIsAbove18(false)}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: isAbove18 === false ? '#B91C1C' : '#475569' }}>
+                        No (Under 18)
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
 
               <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Short Bio</Text>
               <TextInput
