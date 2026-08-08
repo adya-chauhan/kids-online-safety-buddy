@@ -6,6 +6,14 @@ Navi is a privacy-first mobile application designed to protect children from cyb
 
 ---
 
+## 📱 Application Preview
+
+<p align="center">
+  <img src="docs/screenshots/app_overview.png" alt="Navi App Mobile Interface" width="850" />
+</p>
+
+---
+
 ## 🌟 Key Features
 
 * **3-Stage AI Intervention Pipeline:** Detects cyberbullying and privacy risks before messages are sent or read, offering children three constructive choices (*Ignore & Pivot*, *Respond Politely*, or *Alert Support Person*).
