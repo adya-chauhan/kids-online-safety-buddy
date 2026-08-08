@@ -1,13 +1,49 @@
-// LocalLLMService.js
-// Centralizes all local model inference calls.
-// During development (__DEV__), calls host Ollama endpoints over network.
-// For production, connects to local native device engines.
+import { NativeModules, Platform } from 'react-native';
 
-const PRIMARY_IP = '192.168.0.158';
+const PRIMARY_LAN_IPS = ['192.168.0.151', '192.168.0.158'];
 const OLLAMA_PORT = '11434';
 
-  // Helper to make fetch requests to Ollama
-const callOllama = async (model, prompt, options = {}, timeout = 15000) => {
+// Helper to determine all candidate host addresses for web, mobile (Expo Go), and emulators
+const getHostCandidates = () => {
+  const hosts = [];
+
+  // 1. Browser hostname (if running in web)
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    const h = window.location.hostname;
+    if (h && h !== 'localhost' && h !== '127.0.0.1') {
+      hosts.push(h);
+    }
+  }
+
+  // 2. React Native bundle host (Expo Go / Metro bundler host IP on phone)
+  try {
+    const scriptURL = NativeModules?.SourceCode?.scriptURL;
+    if (scriptURL) {
+      const match = scriptURL.match(/:\/\/([^:\/]+)/);
+      if (match && match[1] && match[1] !== 'localhost' && match[1] !== '127.0.0.1') {
+        hosts.push(match[1]);
+      }
+    }
+  } catch (e) {}
+
+  // 3. Known Mac LAN IPs
+  hosts.push(...PRIMARY_LAN_IPS);
+
+  // 4. Android emulator host alias
+  try {
+    if (Platform && Platform.OS === 'android') {
+      hosts.push('10.0.2.2');
+    }
+  } catch (e) {}
+
+  // 5. Localhost / Loopback
+  hosts.push('localhost', '127.0.0.1');
+
+  return Array.from(new Set(hosts.filter(Boolean)));
+};
+
+// Helper to make fetch requests to Ollama
+const callOllama = async (model, prompt, options = {}, timeout = 8000) => {
   const requestOptions = {
     method: 'POST',
     headers: { 
@@ -22,15 +58,9 @@ const callOllama = async (model, prompt, options = {}, timeout = 15000) => {
     })
   };
 
-  const hostCandidates = [];
-  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    hostCandidates.push(window.location.hostname);
-  }
-  hostCandidates.push('localhost', '127.0.0.1');
+  const hosts = getHostCandidates();
 
-  const uniqueHosts = Array.from(new Set(hostCandidates));
-
-  for (const host of uniqueHosts) {
+  for (const host of hosts) {
     const endpoint = `http://${host}:${OLLAMA_PORT}/api/generate`;
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
