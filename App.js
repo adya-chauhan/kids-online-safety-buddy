@@ -2010,15 +2010,18 @@ export default function App() {
         }
       }
 
-      // 3. Generate Navi's advice in background, then update the card
+      // 3. Generate Navi's advice in background using saved situation text
+      const targetSituationText = situationText;
+      const targetTypeLabel = textingTypeLabel;
+
       setSelectedTextingType(null);
       setSituationText('');
       setSelectedSupportType(null);
 
       try {
-        const advice = await generateNaviChildAdvice(situationText, textingTypeLabel);
+        const advice = await generateNaviChildAdvice(targetSituationText, targetTypeLabel);
         setPendingSupportRequests(prev => prev.map(r =>
-          r.id === reqId ? { ...r, naviAdvice: advice, status: 'Replied' } : r
+          r.id === reqId ? { ...r, naviAdvice: advice || "Hey, I hear you! What you're going through sounds tough, but you did the right thing by sharing it. I'm always here for you! 💙", status: 'Replied' } : r
         ));
       } catch (e) {
         console.error('[Navi advice] Error:', e);

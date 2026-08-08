@@ -6,11 +6,14 @@
 const PRIMARY_IP = '192.168.0.158';
 const OLLAMA_PORT = '11434';
 
-// Helper to make fetch requests to Ollama
-const callOllama = async (model, prompt, options = {}, timeout = 5000) => {
+  // Helper to make fetch requests to Ollama
+const callOllama = async (model, prompt, options = {}, timeout = 6000) => {
   const requestOptions = {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
     body: JSON.stringify({
       model,
       prompt,
@@ -19,7 +22,13 @@ const callOllama = async (model, prompt, options = {}, timeout = 5000) => {
     })
   };
 
+  let browserHost = 'localhost';
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    browserHost = window.location.hostname;
+  }
+
   const tryEndpoints = [
+    `http://${browserHost}:${OLLAMA_PORT}/api/generate`,
     `http://localhost:${OLLAMA_PORT}/api/generate`,
     `http://127.0.0.1:${OLLAMA_PORT}/api/generate`,
     `http://${PRIMARY_IP}:${OLLAMA_PORT}/api/generate`
