@@ -1957,7 +1957,7 @@ export default function App() {
       return;
     }
     if (!selectedSupportType) {
-      Alert.alert("Tip", "Please choose who you want to talk to (Navi or Therapist)!");
+      Alert.alert("Tip", "Please choose who you want to talk to (Navi or Support Person)!");
       return;
     }
 
@@ -2152,9 +2152,9 @@ export default function App() {
             <TouchableOpacity
               style={[
                 styles.helperChoiceBox,
-                selectedSupportType === 'Therapist' && styles.helperChoiceBoxSelected
+                selectedSupportType === 'Support Person' && styles.helperChoiceBoxSelected
               ]}
-              onPress={() => setSelectedSupportType('Therapist')}
+              onPress={() => setSelectedSupportType('Support Person')}
               activeOpacity={0.7}
             >
               <View style={{
@@ -2165,13 +2165,13 @@ export default function App() {
                 marginTop: 6,
                 marginBottom: 2,
               }}>
-                <Text style={{ fontSize: 32 }}>🩺</Text>
+                <Text style={{ fontSize: 32 }}>🤝</Text>
               </View>
               <Text style={[
                 styles.helperChoiceText,
-                selectedSupportType === 'Therapist' && styles.helperChoiceTextSelected
+                selectedSupportType === 'Support Person' && styles.helperChoiceTextSelected
               ]}>
-                Therapist
+                Support Person
               </Text>
             </TouchableOpacity>
           </View>
