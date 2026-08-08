@@ -4140,138 +4140,138 @@ export default function App() {
           style={{ flex: 1 }} 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={{ flex: 1 }}>
-              <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
-              
-              <View style={{ alignItems: 'center', marginBottom: 32 }}>
-                <Image 
-                  source={require('./assets/navi_thumbs_up.png')} 
-                  style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 16 }} 
-                />
-                <Text style={{ fontSize: 28, fontWeight: '900', color: '#1E3A8A', textAlign: 'center' }}>Welcome to Navi! 🛡️</Text>
-                <Text style={{ fontSize: 15, color: '#64748B', textAlign: 'center', marginTop: 8, paddingHorizontal: 16 }}>
-                  Navi is your online safety buddy. Let's create your profile to start chatting with friends safely!
-                </Text>
+          <ScrollView 
+            style={{ flex: 1 }} 
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 60, flexGrow: 1, justifyContent: 'center' }} 
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={true}
+          >
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <Image 
+                source={require('./assets/navi_thumbs_up.png')} 
+                style={{ width: 90, height: 90, resizeMode: 'contain', marginBottom: 10 }} 
+              />
+              <Text style={{ fontSize: 26, fontWeight: '900', color: '#1E3A8A', textAlign: 'center' }}>Welcome to Navi! 🛡️</Text>
+              <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 6, paddingHorizontal: 12 }}>
+                Navi is your online safety buddy. Let's create your profile to start chatting with friends safely!
+              </Text>
+            </View>
+
+            <View style={{ backgroundColor: '#FFFFFF', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#E2E8F0', elevation: 2 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Your Name *</Text>
+              <TextInput
+                style={{
+                  height: 46,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#E2E8F0',
+                  paddingHorizontal: 16,
+                  fontSize: 15,
+                  color: '#1E293B',
+                  marginBottom: 14,
+                  backgroundColor: '#F8FAFC'
+                }}
+                placeholder="Enter your name (e.g. Pari)"
+                placeholderTextColor="#94A3B8"
+                value={regName}
+                onChangeText={setRegName}
+              />
+
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Phone Number *</Text>
+              <TextInput
+                style={{
+                  height: 46,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#E2E8F0',
+                  paddingHorizontal: 16,
+                  fontSize: 15,
+                  color: '#1E293B',
+                  marginBottom: 14,
+                  backgroundColor: '#F8FAFC'
+                }}
+                placeholder="Enter phone number (e.g. 555-0199)"
+                placeholderTextColor="#94A3B8"
+                keyboardType="phone-pad"
+                value={regPhone}
+                onChangeText={setRegPhone}
+              />
+
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Account Type</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+                {['Kid', 'Parent', 'Support'].map((role) => {
+                  const isSelected = regRole === role;
+                  let activeBgColor = '#DBEAFE'; // light blue
+                  let activeBorderColor = '#3B82F6';
+                  let activeTextColor = '#1E40AF';
+                  
+                  if (role === 'Parent') {
+                    activeBgColor = '#DCFCE7'; // light green
+                    activeBorderColor = '#22C55E';
+                    activeTextColor = '#15803D';
+                  } else if (role === 'Support') {
+                    activeBgColor = '#FEE2E2'; // light red
+                    activeBorderColor = '#EF4444';
+                    activeTextColor = '#B91C1C';
+                  }
+                  
+                  return (
+                    <TouchableOpacity
+                      key={role}
+                      style={{
+                        flex: 1,
+                        height: 42,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: isSelected ? activeBorderColor : '#E2E8F0',
+                        backgroundColor: isSelected ? activeBgColor : '#FFFFFF',
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}
+                      onPress={() => setRegRole(role)}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? activeTextColor : '#475569' }}>
+                        {role}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
-              <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#E2E8F0', elevation: 2 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Your Name *</Text>
-                <TextInput
-                  style={{
-                    height: 48,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: '#E2E8F0',
-                    paddingHorizontal: 16,
-                    fontSize: 15,
-                    color: '#1E293B',
-                    marginBottom: 16,
-                    backgroundColor: '#F8FAFC'
-                  }}
-                  placeholder="Enter your name (e.g. Pari)"
-                  placeholderTextColor="#94A3B8"
-                  value={regName}
-                  onChangeText={setRegName}
-                />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Short Bio</Text>
+              <TextInput
+                style={{
+                  height: 46,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#E2E8F0',
+                  paddingHorizontal: 16,
+                  fontSize: 15,
+                  color: '#1E293B',
+                  marginBottom: 20,
+                  backgroundColor: '#F8FAFC'
+                }}
+                placeholder="Loves painting and coding! 🎨💻"
+                placeholderTextColor="#94A3B8"
+                value={regBio}
+                onChangeText={setRegBio}
+              />
 
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Phone Number *</Text>
-                <TextInput
-                  style={{
-                    height: 48,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: '#E2E8F0',
-                    paddingHorizontal: 16,
-                    fontSize: 15,
-                    color: '#1E293B',
-                    marginBottom: 16,
-                    backgroundColor: '#F8FAFC'
-                  }}
-                  placeholder="Enter phone number (e.g. 555-0199)"
-                  placeholderTextColor="#94A3B8"
-                  keyboardType="phone-pad"
-                  value={regPhone}
-                  onChangeText={setRegPhone}
-                />
-
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Account Type</Text>
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                  {['Kid', 'Parent', 'Support'].map((role) => {
-                    const isSelected = regRole === role;
-                    let activeBgColor = '#DBEAFE'; // light blue
-                    let activeBorderColor = '#3B82F6';
-                    let activeTextColor = '#1E40AF';
-                    
-                    if (role === 'Parent') {
-                      activeBgColor = '#DCFCE7'; // light green
-                      activeBorderColor = '#22C55E';
-                      activeTextColor = '#15803D';
-                    } else if (role === 'Support') {
-                      activeBgColor = '#FEE2E2'; // light red
-                      activeBorderColor = '#EF4444';
-                      activeTextColor = '#B91C1C';
-                    }
-                    
-                    return (
-                      <TouchableOpacity
-                        key={role}
-                        style={{
-                          flex: 1,
-                          height: 44,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: isSelected ? activeBorderColor : '#E2E8F0',
-                          backgroundColor: isSelected ? activeBgColor : '#FFFFFF',
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}
-                        onPress={() => setRegRole(role)}
-                      >
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: isSelected ? activeTextColor : '#475569' }}>
-                          {role}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>Short Bio</Text>
-                <TextInput
-                  style={{
-                    height: 48,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: '#E2E8F0',
-                    paddingHorizontal: 16,
-                    fontSize: 15,
-                    color: '#1E293B',
-                    marginBottom: 24,
-                    backgroundColor: '#F8FAFC'
-                  }}
-                  placeholder="Loves painting and coding! 🎨💻"
-                  placeholderTextColor="#94A3B8"
-                  value={regBio}
-                  onChangeText={setRegBio}
-                />
-
-                <TouchableOpacity 
-                  style={{
-                    height: 48,
-                    backgroundColor: '#2563EB',
-                    borderRadius: 12,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    elevation: 2
-                  }} 
-                  onPress={handleRegisterUser}
-                >
-                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>Start Using Navi 🛡️</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </TouchableWithoutFeedback>
+              <TouchableOpacity 
+                style={{
+                  height: 48,
+                  backgroundColor: '#2563EB',
+                  borderRadius: 12,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  elevation: 2
+                }} 
+                onPress={handleRegisterUser}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>Start Using Navi 🛡️</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     );
