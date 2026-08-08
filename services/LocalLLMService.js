@@ -159,11 +159,23 @@ Provide 1 to 2 sentences of professional, actionable advice for a support worker
 
 // 6. Generate Navi's friendly advice spoken directly to the child
 export const generateNaviChildAdvice = async (situation, textingType) => {
-  const prompt = `You are Navi, a friendly and caring AI safety buddy for kids. A child told you about something upsetting happening to them online or over text.
-Child's situation: "${situation}"
-Context/Type: "${textingType}"
-Reply directly to the child in 2 to 3 warm, supportive, encouraging sentences. Use simple language suitable for kids. Be kind and reassuring. Do not be alarming. Start with something like "Hey, I hear you..." or "I'm so glad you told me...". Keep it under 50 words.`;
+  const cleanInput = (situation || '').trim();
+  const isGreeting = /^(hi|hello|hey|sup|yo|hola|good morning|good evening)\b/i.test(cleanInput);
 
-  const result = await callOllama('gemma:2b', prompt);
-  return result ? result.trim().replace(/^["|']|["|']$/g, '') : "Hey, I hear you! What you're going through sounds really tough, but you did the right thing by sharing it. Remember, it's not your fault and I'm always here for you! 💙";
+  let prompt = "";
+  if (isGreeting) {
+    prompt = `You are Navi, a friendly AI safety buddy for kids. A child just said "${cleanInput}" to you.
+Reply with a warm, cheerful, friendly greeting in 1 to 2 short sentences. Be enthusiastic, kind, and welcoming! Do not mention bullying or problems. Keep it under 25 words.`;
+  } else {
+    prompt = `You are Navi, a friendly and caring AI safety buddy for kids. A child told you about an online situation: "${cleanInput}" (Category: ${textingType}).
+Reply directly to the child in 2 warm, supportive sentences specifically addressing what they described.
+Rules:
+- Be unique, natural, and conversational.
+- Do NOT use canned opening phrases like "Hey, I hear you" or "It sounds like".
+- Address their specific problem directly.
+Keep it under 45 words.`;
+  }
+
+  const result = await callOllama('gemma:2b', prompt, { temperature: 0.9 });
+  return result ? result.trim().replace(/^["|']|["|']$/g, '') : "Hi there! I'm Navi, your online safety buddy. I'm always here to listen and help! 💙";
 };
