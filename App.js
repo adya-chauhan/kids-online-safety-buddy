@@ -2123,21 +2123,18 @@ export default function App() {
               activeOpacity={0.7}
             >
               <View style={{
-                width: 60,
-                height: 42,
-                overflow: 'hidden',
-                marginTop: 6,
-                marginBottom: 2,
+                width: 50,
+                height: 50,
                 justifyContent: 'center',
                 alignItems: 'center',
+                marginBottom: 4,
               }}>
                 <Image 
                   source={require('./assets/navi_thumbs_up.png')} 
                   style={{
-                    width: 68,
-                    height: 76,
+                    width: 48,
+                    height: 48,
                     resizeMode: 'contain',
-                    marginTop: 12,
                   }}
                 />
               </View>
