@@ -176,6 +176,13 @@ Rules:
 Keep it under 45 words.`;
   }
 
-  const result = await callOllama('gemma:2b', prompt, { temperature: 0.9 });
-  return result ? result.trim().replace(/^["|']|["|']$/g, '') : "Hi there! I'm Navi, your online safety buddy. I'm always here to listen and help! 💙";
+  const result = await callOllama('gemma:2b', prompt, { temperature: 0.9 }, 15000);
+  if (result && result.trim()) {
+    return result.trim().replace(/^["|']|["|']$/g, '');
+  }
+
+  if (isGreeting) {
+    return `Hello there! I'm Navi, your online safety buddy. I'm so happy to chat with you today! 💙`;
+  }
+  return `I hear you about "${cleanInput}". You did the right thing by bringing this up! Remember that I'm always here to help you navigate tricky chats. 💙`;
 };

@@ -2021,12 +2021,12 @@ export default function App() {
       try {
         const advice = await generateNaviChildAdvice(targetSituationText, targetTypeLabel);
         setPendingSupportRequests(prev => prev.map(r =>
-          r.id === reqId ? { ...r, naviAdvice: advice || "Hey, I hear you! What you're going through sounds tough, but you did the right thing by sharing it. I'm always here for you! 💙", status: 'Replied' } : r
+          r.id === reqId ? { ...r, naviAdvice: advice || `I hear you about "${targetSituationText}". You did the right thing by bringing this up! 💙`, status: 'Replied' } : r
         ));
       } catch (e) {
         console.error('[Navi advice] Error:', e);
         setPendingSupportRequests(prev => prev.map(r =>
-          r.id === reqId ? { ...r, naviAdvice: "Hey, I hear you! You did the right thing by sharing this. Remember, it's not your fault and I'm always here for you! 💙", status: 'Replied' } : r
+          r.id === reqId ? { ...r, naviAdvice: `I hear you about "${targetSituationText}". You did the right thing by bringing this up! 💙`, status: 'Replied' } : r
         ));
       }
 
