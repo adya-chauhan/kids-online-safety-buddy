@@ -3750,13 +3750,13 @@ export default function App() {
       return;
     }
 
-    if (regRole === 'Support') {
+    if (regRole === 'Parent' || regRole === 'Support') {
       if (isAbove18 === null) {
         Alert.alert("Age Verification", "Please confirm whether you are 18 or above.");
         return;
       }
       if (isAbove18 === false) {
-        Alert.alert("Age Restriction", "Support account registration requires you to be 18 years of age or older.");
+        Alert.alert("Age Restriction", `${regRole} account registration requires you to be 18 years of age or older.`);
         return;
       }
     }
@@ -4250,7 +4250,7 @@ export default function App() {
                 })}
               </View>
 
-              {regRole === 'Support' && (
+              {(regRole === 'Parent' || regRole === 'Support') && (
                 <View style={{ marginBottom: 14 }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6 }}>
                     Are you 18 or above? *
