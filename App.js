@@ -2921,6 +2921,11 @@ export default function App() {
             onPress={async () => {
               LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
               await AsyncStorage.removeItem('navi_user_profile');
+              setRegName('');
+              setRegPhone('');
+              setRegRole('Kid');
+              setRegBio('');
+              setIsAbove18(null);
               setCurrentUser(null);
               setActiveChat(null);
             }}
@@ -3750,8 +3755,8 @@ export default function App() {
   };
 
   const handleRegisterUser = async () => {
-    if (!regName.trim() || !regPhone.trim()) {
-      Alert.alert("Required Fields", "Please enter both your name and phone number!");
+    if (!regPhone.trim()) {
+      Alert.alert("Required Field", "Please enter your phone number to sign in or create an account!");
       return;
     }
 
@@ -3761,46 +3766,53 @@ export default function App() {
       return;
     }
 
-    if (regRole === 'Parent' || regRole === 'Support') {
-      if (isAbove18 === null) {
-        Alert.alert("Age Verification", "Please confirm whether you are 18 or above.");
-        return;
-      }
-      if (isAbove18 === false) {
-        Alert.alert("Age Restriction", `${regRole} account registration requires you to be 18 years of age or older.`);
-        return;
-      }
-    }
-
     setIsUserLoading(true);
     try {
+      let existing = null;
       if (supabase) {
-        // Check if user already exists
-        const existing = await fetchProfileByPhone(cleanPhone);
-        
-        // Build user profile using the form values entered by the user
+        existing = await fetchProfileByPhone(cleanPhone);
+      }
+      if (!existing) {
+        existing = profiles.find(p => p.phone && p.phone.replace(/\D/g, '') === cleanPhone && !p.is_simulated);
+      }
+
+      if (existing) {
+        // Log in to existing account!
         const userProfile = {
-          id: cleanPhone,
-          name: regName.trim(),
-          role: regRole,
+          id: existing.id || cleanPhone,
+          name: regName.trim() || existing.name,
+          role: regName.trim() ? regRole : (existing.role || 'Kid'),
           phone: cleanPhone,
-          bio: regBio.trim(),
-          avatar_url: existing?.avatar_url || '',
+          bio: regName.trim() ? regBio.trim() : (existing.bio || ''),
+          avatar_url: existing.avatar_url || '',
           is_simulated: false
         };
 
-        // Upsert to Supabase so it updates the name/bio/role if they already exist
-        await upsertProfile(userProfile);
+        if (supabase) {
+          await upsertProfile(userProfile);
+        }
         await AsyncStorage.setItem('navi_user_profile', JSON.stringify(userProfile));
         setCurrentUser(userProfile);
         setActiveTab((userProfile.role || '').toLowerCase().includes('support') ? 'support_inbox' : 'chats');
-
-        if (existing) {
-          Alert.alert("Welcome Back!", `Logged in as ${regName.trim()}.`);
-        } else {
-          Alert.alert("Registration Complete", `Welcome to Navi, ${regName.trim()}!`);
-        }
+        Alert.alert("Welcome Back!", `Logged in as ${userProfile.name}.`);
       } else {
+        // Create new account
+        if (!regName.trim()) {
+          Alert.alert("Required Field", "Please enter your name to create your account!");
+          return;
+        }
+
+        if (regRole === 'Parent' || regRole === 'Support') {
+          if (isAbove18 === null) {
+            Alert.alert("Age Verification", "Please confirm whether you are 18 or above.");
+            return;
+          }
+          if (isAbove18 === false) {
+            Alert.alert("Age Restriction", `${regRole} account registration requires you to be 18 years of age or older.`);
+            return;
+          }
+        }
+
         const userProfile = {
           id: cleanPhone,
           name: regName.trim(),
@@ -3810,13 +3822,17 @@ export default function App() {
           avatar_url: '',
           is_simulated: false
         };
+        if (supabase) {
+          await upsertProfile(userProfile);
+        }
         await AsyncStorage.setItem('navi_user_profile', JSON.stringify(userProfile));
         setCurrentUser(userProfile);
         setActiveTab((userProfile.role || '').toLowerCase().includes('support') ? 'support_inbox' : 'chats');
+        Alert.alert("Registration Complete", `Welcome to Navi, ${userProfile.name}!`);
       }
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Could not complete registration.");
+      Alert.alert("Error", "Could not complete sign in / registration.");
     } finally {
       setIsUserLoading(false);
     }
