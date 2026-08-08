@@ -1,8 +1,8 @@
-# Navi 🛡️ — Kids Online Safety Buddy
+# Navi 🛡️ | Kids Online Safety Buddy
 
 > **Empowering children with real-time AI coaching to navigate hostile digital environments safely, confidently, and independently.**
 
-Navi is a privacy-first mobile application designed to protect children from cyberbullying and digital privacy risks. Rather than relying on constant surveillance or intrusive data tracking, Navi acts as an active digital citizenship buddy—intercepting harmful language and privacy risks in real time and equipping kids with constructive response strategies.
+Navi is a privacy-first mobile application designed to protect children from cyberbullying and digital privacy risks. Rather than relying on constant surveillance or intrusive data tracking, Navi acts as an active digital citizenship buddy: intercepting harmful language and privacy risks in real time and equipping kids with constructive response strategies.
 
 ---
 
@@ -44,9 +44,9 @@ flowchart LR
     E --> G3["Option 3: Alert Support Person"]
 ```
 
-1. **Stage 1 — "Eyes" (Message Analyzer):** Uses Natural Language Processing (NLP) to tokenize input text, strip pronouns and common stopwords, assign numerical token IDs, and check against PII patterns.
-2. **Stage 2 — "Heart" (Sentiment Classifier):** A Naive Bayes classifier trained with Laplacian smoothing ($\alpha = 0.1$) calculates normalized confidence probability scores across harassment and privacy risk categories.
-3. **Stage 3 — "Hands" (Decision Engine):** If a toxicity score exceeds the 90% threshold, Navi triggers an interactive intervention overlay presenting three kind choices, ensuring the child always retains final agency.
+1. **Stage 1: "Eyes" (Message Analyzer):** Uses Natural Language Processing (NLP) to tokenize input text, strip pronouns and common stopwords, assign numerical token IDs, and check against PII patterns.
+2. **Stage 2: "Heart" (Sentiment Classifier):** A Naive Bayes classifier trained with Laplacian smoothing ($\alpha = 0.1$) calculates normalized confidence probability scores across harassment and privacy risk categories.
+3. **Stage 3: "Hands" (Decision Engine):** If a toxicity score exceeds the 90% threshold, Navi triggers an interactive intervention overlay presenting three kind choices, ensuring the child always retains final agency.
 
 ---
 
@@ -102,4 +102,4 @@ flowchart LR
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License: see the [LICENSE](LICENSE) file for details.

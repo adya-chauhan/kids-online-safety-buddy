@@ -1532,7 +1532,7 @@ export default function App() {
     );
   };
 
-  // Support Inbox Screen — shows all support requests received from kids
+  // Support Inbox Screen: shows all support requests received from kids
   const renderSupportInbox = () => {
     // Gather all messages from all contacts that are support requests
     const allMessages = Object.values(messages).flat();
