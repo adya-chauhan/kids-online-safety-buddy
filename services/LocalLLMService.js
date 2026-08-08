@@ -7,7 +7,7 @@ const PRIMARY_IP = '192.168.0.158';
 const OLLAMA_PORT = '11434';
 
 // Helper to make fetch requests to Ollama
-const callOllama = async (model, prompt, options = {}, timeout = 25000) => {
+const callOllama = async (model, prompt, options = {}, timeout = 5000) => {
   const requestOptions = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -20,9 +20,9 @@ const callOllama = async (model, prompt, options = {}, timeout = 25000) => {
   };
 
   const tryEndpoints = [
-    `http://${PRIMARY_IP}:${OLLAMA_PORT}/api/generate`,
     `http://localhost:${OLLAMA_PORT}/api/generate`,
-    `http://127.0.0.1:${OLLAMA_PORT}/api/generate`
+    `http://127.0.0.1:${OLLAMA_PORT}/api/generate`,
+    `http://${PRIMARY_IP}:${OLLAMA_PORT}/api/generate`
   ];
 
   for (const endpoint of tryEndpoints) {
