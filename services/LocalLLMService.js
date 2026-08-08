@@ -188,23 +188,26 @@ Provide 1 to 2 sentences of professional, actionable advice for a support worker
 export const generateNaviChildAdvice = async (situation, textingType) => {
   const cleanInput = (situation || '').trim();
 
-  const prompt = `You are Navi, a friendly, warm, caring AI safety buddy for kids. You live right inside this safety app on the child's device.
-The child sent you this message: "${cleanInput}" (Category: ${textingType}).
+  const prompt = `You are Navi, a helpful, caring, and knowledgeable AI online safety buddy for kids. You live right inside this app on the child's device.
+A child asked you: "${cleanInput}" (Category: ${textingType}).
 
-Reply directly to the child in 1 to 2 warm, natural, friendly sentences:
-- If the child asks a question about you (e.g. "Where are you?", "Who are you?", "How many people have you talked to?"), answer cheerfully as Navi! (You live in their app as their safety buddy!).
-- If the child shares a problem or mean situation, give 2 supportive sentences helping them feel safe.
-- If the child says hi or makes small talk, give a happy greeting.
+Instructions:
+- Directly answer the child's message or question with clear, practical, friendly advice in 2 to 3 sentences.
+- If they ask for tips, give real, practical tips (e.g. keep passwords secret, don't share personal info, tell a trusted adult).
+- If they share an upsetting or mean situation, give warm encouragement and actionable steps to stay safe.
+- If they ask about who/where you are, answer cheerfully as Navi.
+- Keep your tone warm, encouraging, positive, and kid-friendly (under 50 words). Output only your answer.`;
 
-Keep your response under 35 words, friendly, kind, and positive.`;
-
-  const result = await callOllama('gemma:2b', prompt, { temperature: 0.8 }, 15000);
+  const result = await callOllama('gemma:2b', prompt, { temperature: 0.7 }, 15000);
   if (result && result.trim()) {
     return result.trim().replace(/^["|']|["|']$/g, '');
   }
 
-  // Dynamic non-static contextual response if LLM is busy
+  // Dynamic contextual fallback if model is busy
   const lower = cleanInput.toLowerCase();
+  if (lower.includes('tip') || lower.includes('safe') || lower.includes('advice')) {
+    return `Here are two big safety tips: 1. Never share your passwords or personal info online! 2. Always tell a trusted adult if something feels weird or uncomfortable. 🛡️`;
+  }
   if (lower.includes('where')) {
     return `I'm right here inside your app on your device! I'm always with you to keep your chats safe and fun. 💙`;
   }
@@ -218,5 +221,5 @@ Keep your response under 35 words, friendly, kind, and positive.`;
     return `Hi there! I'm Navi! I'm so happy to chat with you today! 💙`;
   }
 
-  return `I hear you about "${cleanInput}". I'm always right here in your app to help you navigate any chat! 💙`;
+  return `I'm right here to help you with "${cleanInput}"! What else would you like to know? 💙`;
 };
