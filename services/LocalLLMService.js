@@ -7,7 +7,7 @@ const PRIMARY_IP = '192.168.0.158';
 const OLLAMA_PORT = '11434';
 
   // Helper to make fetch requests to Ollama
-const callOllama = async (model, prompt, options = {}, timeout = 6000) => {
+const callOllama = async (model, prompt, options = {}, timeout = 4000) => {
   const requestOptions = {
     method: 'POST',
     headers: { 
@@ -22,19 +22,16 @@ const callOllama = async (model, prompt, options = {}, timeout = 6000) => {
     })
   };
 
-  let browserHost = 'localhost';
+  const hostCandidates = [];
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    browserHost = window.location.hostname;
+    hostCandidates.push(window.location.hostname);
   }
+  hostCandidates.push('localhost', '127.0.0.1');
 
-  const tryEndpoints = [
-    `http://${browserHost}:${OLLAMA_PORT}/api/generate`,
-    `http://localhost:${OLLAMA_PORT}/api/generate`,
-    `http://127.0.0.1:${OLLAMA_PORT}/api/generate`,
-    `http://${PRIMARY_IP}:${OLLAMA_PORT}/api/generate`
-  ];
+  const uniqueHosts = Array.from(new Set(hostCandidates));
 
-  for (const endpoint of tryEndpoints) {
+  for (const host of uniqueHosts) {
+    const endpoint = `http://${host}:${OLLAMA_PORT}/api/generate`;
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
@@ -50,7 +47,7 @@ const callOllama = async (model, prompt, options = {}, timeout = 6000) => {
         }
       }
     } catch (e) {
-      // Continue to next endpoint
+      clearTimeout(id);
     }
   }
 
