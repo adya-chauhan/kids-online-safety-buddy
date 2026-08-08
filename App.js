@@ -2207,29 +2207,43 @@ export default function App() {
               <Text style={[styles.supportLabel, { marginBottom: 12 }]}>Your pending messages</Text>
 
               {/* Child's locally-tracked requests (this session) */}
-              {pendingSupportRequests.slice().reverse().map(req => {
+              {pendingSupportRequests.slice().reverse().map((req, idx) => {
+                const isLatest = idx === 0;
                 if (req.isNaviCard) {
                   // --- NAVI CARD ---
                   return (
                     <View key={req.id} style={{
-                      backgroundColor: '#EFF6FF',
-                      borderWidth: 1.5,
-                      borderColor: '#93C5FD',
+                      backgroundColor: isLatest ? '#EEF2FF' : '#EFF6FF',
+                      borderWidth: isLatest ? 2 : 1.5,
+                      borderColor: isLatest ? '#4F46E5' : '#93C5FD',
                       borderRadius: 14,
                       padding: 14,
                       marginBottom: 12,
                     }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#1D4ED8' }}>🤖 Navi · {req.type}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: isLatest ? '#4338CA' : '#1D4ED8' }}>🤖 Navi · {req.type}</Text>
+                          {isLatest && (
+                            <View style={{ backgroundColor: '#4F46E5', borderRadius: 99, paddingHorizontal: 6, paddingVertical: 2 }}>
+                              <Text style={{ fontSize: 10, color: '#FFFFFF', fontWeight: '800' }}>🌟 LATEST</Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={{ fontSize: 11, color: '#94A3B8' }}>{req.time}</Text>
                       </View>
-                      <Text style={{ fontSize: 13, color: '#1E293B', marginBottom: 10 }} numberOfLines={2}>{req.situation}</Text>
+
+                      {/* Question/Situation asked by kid */}
+                      <View style={{ backgroundColor: '#FFFFFF', borderRadius: 8, padding: 8, marginBottom: 8, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748B' }}>💬 You asked:</Text>
+                        <Text style={{ fontSize: 13, color: '#0F172A', fontWeight: '600', marginTop: 2 }}>"{req.situation}"</Text>
+                      </View>
+
                       {/* Navi's advice */}
-                      <View style={{ backgroundColor: '#DBEAFE', borderRadius: 10, padding: 12 }}>
+                      <View style={{ backgroundColor: isLatest ? '#E0E7FF' : '#DBEAFE', borderRadius: 10, padding: 12 }}>
                         {req.naviAdvice ? (
                           <>
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#1D4ED8', marginBottom: 4 }}>💙 Navi says:</Text>
-                            <Text style={{ fontSize: 13, color: '#1E3A8A', lineHeight: 19 }}>{req.naviAdvice}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: isLatest ? '#3730A3' : '#1D4ED8', marginBottom: 4 }}>💙 Navi says:</Text>
+                            <Text style={{ fontSize: 13, color: isLatest ? '#1E1B4B' : '#1E3A8A', lineHeight: 19, fontWeight: '500' }}>{req.naviAdvice}</Text>
                           </>
                         ) : (
                           <Text style={{ fontSize: 13, color: '#3B82F6', fontStyle: 'italic' }}>Navi is thinking... 💭</Text>
